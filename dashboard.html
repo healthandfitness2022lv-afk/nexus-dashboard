@@ -289,6 +289,73 @@
             font-size: 14px;
         }
 
+        /* Indicador tiempo real */
+        .realtime-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #27ae60;
+            background: #d4edda;
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+        .realtime-dot {
+            width: 7px;
+            height: 7px;
+            background: #27ae60;
+            border-radius: 50%;
+            animation: pulse-dot 1.4s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.7); }
+        }
+
+        /* Switch balance/saldo */
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #555;
+            cursor: pointer;
+            user-select: none;
+        }
+        .toggle-switch input[type="checkbox"] { display: none; }
+        .toggle-track {
+            width: 40px;
+            height: 22px;
+            background: #ccc;
+            border-radius: 11px;
+            position: relative;
+            transition: background 0.25s;
+            cursor: pointer;
+        }
+        .toggle-track::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.25s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+        }
+        .toggle-switch input:checked + .toggle-track { background: #667eea; }
+        .toggle-switch input:checked + .toggle-track::after { transform: translateX(18px); }
+
         .footer {
             text-align: center;
             color: white;
@@ -392,7 +459,18 @@
         <!-- GRAFICO EVOLUCION SALDO -->
         <div class="grid full">
             <div class="card">
-                <h2>Evolucion de Saldo</h2>
+                <div class="chart-header">
+                    <h2 style="margin-bottom:0;">Evolucion de Saldo</h2>
+                    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                        <span class="realtime-badge"><span class="realtime-dot"></span>Tiempo Real</span>
+                        <label class="toggle-switch" title="Alternar entre saldo acumulado y balance del periodo">
+                            <input type="checkbox" id="balanceToggle">
+                            <span class="toggle-track"></span>
+                            <span id="balanceToggleLabel">Saldo Acumulado</span>
+                        </label>
+                    </div>
+                </div>
+                <div id="balanceChartSubtitle" style="font-size:12px;color:#999;margin-bottom:10px;"></div>
                 <div class="chart-container tall">
                     <canvas id="balanceChart"></canvas>
                 </div>
@@ -548,7 +626,7 @@
         </div>
 
         <div class="footer">
-            <p>Dashboard NEXUS Finanzas | Ultima actualizacion: <span id="lastUpdate">--</span></p>
+            <p>Dashboard NEXUS Finanzas | Ultima actualizacion: <span id="lastUpdate">--</span> &nbsp;<span class="realtime-badge" style="vertical-align:middle;"><span class="realtime-dot"></span>Actualizacion automatica activa</span></p>
             <p>NEXUS Finanzas 2025</p>
         </div>
     </div>
@@ -742,30 +820,78 @@
         if (charts[key]) { charts[key].destroy(); charts[key] = null; }
     };
 
-    // Evolucion de saldo (usando gastos reales, excluyendo ahorro)
+    // Modo del grafico balance: false = saldo acumulado historico, true = balance del periodo con saldo inicial
+    let balanceChartMode = false;
+
+    // Evolucion de saldo: modo acumulado o modo balance-del-periodo
     const updateBalanceChart = (transactions) => {
         destroyChart('balance');
         const canvasEl = document.getElementById('balanceChart');
         if (!canvasEl) return;
 
+        // Ordenar cronologicamente
         const sorted = [...transactions].sort((a, b) => parseDate(a.fecha) - parseDate(b.fecha));
-        const dailyMap = {};
-        let running = 0;
 
-        sorted.forEach(t => {
-            const fecha = parseDate(t.fecha);
-            const key = fecha.toLocaleDateString('es-CL');
-            const isAhorro = String(t.categoria || '').startsWith('Ahorro');
-            if (t.tipo === 'ingreso') {
-                running += Number(t.monto) || 0;
-            } else if (t.tipo === 'gasto' && !isAhorro) {
-                running -= Number(t.monto) || 0;
-            }
-            dailyMap[key] = running;
-        });
+        let labels, data, labelDataset, color;
 
-        const labels = Object.keys(dailyMap);
-        const data   = Object.values(dailyMap);
+        if (!balanceChartMode) {
+            // --- MODO SALDO ACUMULADO (historico total) ---
+            const dailyMap = {};
+            let running = 0;
+            sorted.forEach(t => {
+                const key = parseDate(t.fecha).toLocaleDateString('es-CL');
+                const isAhorro = String(t.categoria || '').startsWith('Ahorro');
+                if (t.tipo === 'ingreso') running += Number(t.monto) || 0;
+                else if (t.tipo === 'gasto' && !isAhorro) running -= Number(t.monto) || 0;
+                dailyMap[key] = running;
+            });
+            labels = Object.keys(dailyMap);
+            data   = Object.values(dailyMap);
+            labelDataset = 'Saldo Acumulado';
+            color = chartColors.primary;
+
+            const subtitleEl = document.getElementById('balanceChartSubtitle');
+            if (subtitleEl) subtitleEl.textContent = '';
+
+        } else {
+            // --- MODO BALANCE DEL PERIODO: saldo inicial + variacion dia a dia ---
+            // Calcular saldo inicial = todo lo anterior al primer dia del periodo filtrado
+            const firstDayOfPeriod = sorted.length > 0 ? parseDate(sorted[0].fecha) : new Date();
+
+            // Saldo inicial: todas las transacciones de allData ANTES del primer dia del rango
+            let saldoInicial = 0;
+            allData.transactions.forEach(t => {
+                const d = parseDate(t.fecha);
+                if (d < firstDayOfPeriod) {
+                    const isAhorro = String(t.categoria || '').startsWith('Ahorro');
+                    if (t.tipo === 'ingreso') saldoInicial += Number(t.monto) || 0;
+                    else if (t.tipo === 'gasto' && !isAhorro) saldoInicial -= Number(t.monto) || 0;
+                }
+            });
+
+            const dailyMap = {};
+            let running = saldoInicial;
+            // Punto inicial
+            const startLabel = firstDayOfPeriod.toLocaleDateString('es-CL') + ' (inicio)';
+            dailyMap[startLabel] = saldoInicial;
+
+            sorted.forEach(t => {
+                const key = parseDate(t.fecha).toLocaleDateString('es-CL');
+                const isAhorro = String(t.categoria || '').startsWith('Ahorro');
+                if (t.tipo === 'ingreso') running += Number(t.monto) || 0;
+                else if (t.tipo === 'gasto' && !isAhorro) running -= Number(t.monto) || 0;
+                dailyMap[key] = running;
+            });
+
+            labels = Object.keys(dailyMap);
+            data   = Object.values(dailyMap);
+            labelDataset = 'Balance del Periodo';
+            color = chartColors.success;
+
+            const subtitleEl = document.getElementById('balanceChartSubtitle');
+            if (subtitleEl) subtitleEl.textContent =
+                `Saldo al inicio del periodo: $${formatNum(saldoInicial)}`;
+        }
 
         if (labels.length === 0) return;
 
@@ -775,15 +901,15 @@
             data: {
                 labels,
                 datasets: [{
-                    label: 'Saldo Acumulado',
+                    label: labelDataset,
                     data,
-                    borderColor: chartColors.primary,
-                    backgroundColor: 'rgba(102,126,234,0.1)',
+                    borderColor: color,
+                    backgroundColor: color.replace(')', ',0.1)').replace('rgb', 'rgba') || 'rgba(102,126,234,0.1)',
                     borderWidth: 3,
                     fill: true,
                     tension: 0.4,
                     pointRadius: labels.length > 60 ? 0 : 3,
-                    pointBackgroundColor: chartColors.primary,
+                    pointBackgroundColor: color,
                     pointBorderColor: 'white',
                     pointBorderWidth: 2
                 }]
@@ -792,10 +918,15 @@
                 responsive: true, maintainAspectRatio: false,
                 plugins: {
                     legend: { display: true, position: 'top' },
-                    datalabels: { display: false }
+                    datalabels: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `$${formatNum(ctx.parsed.y)}`
+                        }
+                    }
                 },
                 scales: {
-                    y: { ticks: { callback: v => formatNum(v) } }
+                    y: { ticks: { callback: v => '$' + formatNum(v) } }
                 }
             }
         });
@@ -1460,138 +1591,197 @@
     const auth = firebase.auth();
 
     // ============================================================
-    // CARGA DE DATOS DESDE FIRESTORE
+    // CARGA DE DATOS DESDE FIRESTORE - TIEMPO REAL (onSnapshot)
     // ============================================================
-    async function cargarDatosUsuario(user) {
-        console.log('Usuario autenticado:', user.email);
 
-        try {
-            const userRef = db.collection('usuarios').doc(user.uid);
+    // Guardamos los unsubscribe de cada listener para poder cancelarlos al hacer logout
+    let realtimeUnsubs = [];
 
-            // Cargar todas las colecciones en paralelo
-            const [txSnap, metasSnap, presupSnap, deudasSnap, subsSnap, ingEspSnap] = await Promise.all([
-                userRef.collection('transacciones').orderBy('fecha', 'desc').get(),
-                userRef.collection('metas').get(),
-                userRef.collection('presupuestos').get(),
-                userRef.collection('deudas').get(),
-                userRef.collection('suscripciones').get(),
-                userRef.collection('ingresos_esperados').orderBy('fechaEsperada').get()
-                    .catch(() => userRef.collection('ingresos_esperados').get())
-            ]);
+    // Estado de carga inicial: esperamos que las 6 colecciones hayan respondido al menos una vez
+    const realtimeReady = { tx: false, metas: false, presup: false, deudas: false, subs: false, ingEsp: false };
+    let dashboardVisible = false;
 
-            // Transacciones
-            const transacciones = txSnap.docs.map(doc => {
-                const d = doc.data();
-                return {
-                    id: doc.id,
-                    descripcion:  d.descripcion  || '',
-                    monto:        Number(d.monto) || 0,
-                    tipo:         d.tipo          || 'gasto',
-                    categoria:    d.categoria     || 'Sin Categoria',
-                    subcategoria: d.subcategoria  || '',
-                    emoji:        d.emoji         || '',
-                    clasificacion:d.clasificacion || '',
-                    fecha:        parseDate(d.fecha)
-                };
+    function checkAndShowDashboard() {
+        if (dashboardVisible) return;
+        const allReady = Object.values(realtimeReady).every(Boolean);
+        if (!allReady) return;
+        dashboardVisible = true;
+        const modal     = document.getElementById('loginModal');
+        const container = document.querySelector('.container');
+        if (modal)     modal.style.display     = 'none';
+        if (container) container.style.display = 'block';
+    }
+
+    function parseTransacciones(snap) {
+        return snap.docs.map(doc => {
+            const d = doc.data();
+            return {
+                id: doc.id,
+                descripcion:  d.descripcion  || '',
+                monto:        Number(d.monto) || 0,
+                tipo:         d.tipo          || 'gasto',
+                categoria:    d.categoria     || 'Sin Categoria',
+                subcategoria: d.subcategoria  || '',
+                emoji:        d.emoji         || '',
+                clasificacion:d.clasificacion || '',
+                fecha:        parseDate(d.fecha)
+            };
+        });
+    }
+
+    function cargarDatosUsuario(user) {
+        console.log('Activando listeners tiempo real para:', user.email);
+        const userRef = db.collection('usuarios').doc(user.uid);
+
+        // Cancelar cualquier listener previo (por si el usuario se deslogea y vuelve a logear)
+        realtimeUnsubs.forEach(fn => fn());
+        realtimeUnsubs = [];
+        dashboardVisible = false;
+        Object.keys(realtimeReady).forEach(k => realtimeReady[k] = false);
+
+        // --- TRANSACCIONES ---
+        const unsubTx = userRef.collection('transacciones')
+            .orderBy('fecha', 'desc')
+            .onSnapshot(snap => {
+                allData.transactions = parseTransacciones(snap);
+                realtimeReady.tx = true;
+                checkAndShowDashboard();
+                if (dashboardVisible) updateDashboard();
+            }, err => {
+                console.error('Error transacciones:', err);
+                realtimeReady.tx = true;
+                checkAndShowDashboard();
             });
-            console.log('Transacciones:', transacciones.length);
+        realtimeUnsubs.push(unsubTx);
 
-            // Metas
-            const metas = metasSnap.docs.map(doc => {
-                const d = doc.data();
-                return {
-                    id:            doc.id,
-                    nombre:        d.nombre        || 'Meta',
-                    montoObjetivo: Number(d.montoObjetivo) || Number(d.meta) || 0,
-                    montoActual:   Number(d.montoActual)   || Number(d.actual) || 0,
-                    fechaLimite:   d.fechaLimite    || null,
-                    emoji:         d.emoji          || '🎯',
-                    color:         d.color          || ''
-                };
+        // --- METAS ---
+        const unsubMetas = userRef.collection('metas')
+            .onSnapshot(snap => {
+                allData.goals = snap.docs.map(doc => {
+                    const d = doc.data();
+                    return {
+                        id:            doc.id,
+                        nombre:        d.nombre        || 'Meta',
+                        montoObjetivo: Number(d.montoObjetivo) || Number(d.meta) || 0,
+                        montoActual:   Number(d.montoActual)   || Number(d.actual) || 0,
+                        fechaLimite:   d.fechaLimite    || null,
+                        emoji:         d.emoji          || '🎯',
+                        color:         d.color          || ''
+                    };
+                });
+                realtimeReady.metas = true;
+                checkAndShowDashboard();
+                if (dashboardVisible) updateDashboard();
+            }, err => {
+                console.error('Error metas:', err);
+                realtimeReady.metas = true;
+                checkAndShowDashboard();
             });
-            console.log('Metas:', metas.length);
+        realtimeUnsubs.push(unsubMetas);
 
-            // Presupuestos
-            const presupuestos = presupSnap.docs.map(doc => {
-                const d = doc.data();
-                return {
-                    id:        doc.id,
-                    categoria: d.categoria  || '',
-                    limite:    Number(d.limite) || 0,
-                    frecuencia:d.frecuencia || 'mensual',
-                    emoji:     d.emoji      || '📊'
-                };
+        // --- PRESUPUESTOS ---
+        const unsubPresup = userRef.collection('presupuestos')
+            .onSnapshot(snap => {
+                allData.budgets = snap.docs.map(doc => {
+                    const d = doc.data();
+                    return {
+                        id:        doc.id,
+                        categoria: d.categoria  || '',
+                        limite:    Number(d.limite) || 0,
+                        frecuencia:d.frecuencia || 'mensual',
+                        emoji:     d.emoji      || '📊'
+                    };
+                });
+                realtimeReady.presup = true;
+                checkAndShowDashboard();
+                if (dashboardVisible) updateDashboard();
+            }, err => {
+                console.error('Error presupuestos:', err);
+                realtimeReady.presup = true;
+                checkAndShowDashboard();
             });
-            console.log('Presupuestos:', presupuestos.length);
+        realtimeUnsubs.push(unsubPresup);
 
-            // Deudas
-            const deudas = deudasSnap.docs.map(doc => {
-                const d = doc.data();
-                return {
-                    id:           doc.id,
-                    descripcion:  d.descripcion   || 'Deuda',
-                    montoTotal:   Number(d.montoTotal) || 0,
-                    tipo:         d.tipo           || '',
-                    categoria:    d.categoria      || '',
-                    subcategoria: d.subcategoria   || '',
-                    emoji:        d.emoji          || '💳',
-                    fecha:        d.fecha ? parseDate(d.fecha) : null,
-                    clasificacion:d.clasificacion  || '',
-                    cuotasFijas:  Array.isArray(d.cuotasFijas) ? d.cuotasFijas : [],
-                    abonos:       Array.isArray(d.abonos)      ? d.abonos      : [],
-                    cargos:       Array.isArray(d.cargos)      ? d.cargos      : []
-                };
+        // --- DEUDAS ---
+        const unsubDeudas = userRef.collection('deudas')
+            .onSnapshot(snap => {
+                allData.debts = snap.docs.map(doc => {
+                    const d = doc.data();
+                    return {
+                        id:           doc.id,
+                        descripcion:  d.descripcion   || 'Deuda',
+                        montoTotal:   Number(d.montoTotal) || 0,
+                        tipo:         d.tipo           || '',
+                        categoria:    d.categoria      || '',
+                        subcategoria: d.subcategoria   || '',
+                        emoji:        d.emoji          || '💳',
+                        fecha:        d.fecha ? parseDate(d.fecha) : null,
+                        clasificacion:d.clasificacion  || '',
+                        cuotasFijas:  Array.isArray(d.cuotasFijas) ? d.cuotasFijas : [],
+                        abonos:       Array.isArray(d.abonos)      ? d.abonos      : [],
+                        cargos:       Array.isArray(d.cargos)      ? d.cargos      : []
+                    };
+                });
+                realtimeReady.deudas = true;
+                checkAndShowDashboard();
+                if (dashboardVisible) updateDashboard();
+            }, err => {
+                console.error('Error deudas:', err);
+                realtimeReady.deudas = true;
+                checkAndShowDashboard();
             });
-            console.log('Deudas:', deudas.length);
+        realtimeUnsubs.push(unsubDeudas);
 
-            // Suscripciones
-            const suscripciones = subsSnap.docs.map(doc => {
-                const d = doc.data();
-                return {
-                    id:          doc.id,
-                    descripcion: d.descripcion || 'Suscripcion',
-                    monto:       Number(d.monto) || 0,
-                    frecuencia:  d.frecuencia   || 'mensual',
-                    fechaInicio: d.fechaInicio ? parseDate(d.fechaInicio) : null,
-                    emoji:       d.emoji        || '📱',
-                    categoria:   d.categoria    || ''
-                };
+        // --- SUSCRIPCIONES ---
+        const unsubSubs = userRef.collection('suscripciones')
+            .onSnapshot(snap => {
+                allData.suscripciones = snap.docs.map(doc => {
+                    const d = doc.data();
+                    return {
+                        id:          doc.id,
+                        descripcion: d.descripcion || 'Suscripcion',
+                        monto:       Number(d.monto) || 0,
+                        frecuencia:  d.frecuencia   || 'mensual',
+                        fechaInicio: d.fechaInicio ? parseDate(d.fechaInicio) : null,
+                        emoji:       d.emoji        || '📱',
+                        categoria:   d.categoria    || ''
+                    };
+                });
+                realtimeReady.subs = true;
+                checkAndShowDashboard();
+                if (dashboardVisible) updateDashboard();
+            }, err => {
+                console.error('Error suscripciones:', err);
+                realtimeReady.subs = true;
+                checkAndShowDashboard();
             });
-            console.log('Suscripciones:', suscripciones.length);
+        realtimeUnsubs.push(unsubSubs);
 
-            // Ingresos esperados
-            const ingresosEsperados = ingEspSnap.docs.map(doc => {
-                const d = doc.data();
-                return {
-                    id:           doc.id,
-                    descripcion:  d.descripcion  || 'Ingreso esperado',
-                    monto:        Number(d.monto) || 0,
-                    frecuencia:   d.frecuencia   || '',
-                    fechaEsperada:d.fechaEsperada ? parseDate(d.fechaEsperada) : null,
-                    emoji:        d.emoji        || '💰',
-                    categoria:    d.categoria    || '',
-                    recibido:     !!d.recibido
-                };
+        // --- INGRESOS ESPERADOS ---
+        const unsubIngEsp = userRef.collection('ingresos_esperados')
+            .onSnapshot(snap => {
+                allData.ingresosEsperados = snap.docs.map(doc => {
+                    const d = doc.data();
+                    return {
+                        id:           doc.id,
+                        descripcion:  d.descripcion  || 'Ingreso esperado',
+                        monto:        Number(d.monto) || 0,
+                        frecuencia:   d.frecuencia   || '',
+                        fechaEsperada:d.fechaEsperada ? parseDate(d.fechaEsperada) : null,
+                        emoji:        d.emoji        || '💰',
+                        categoria:    d.categoria    || '',
+                        recibido:     !!d.recibido
+                    };
+                });
+                realtimeReady.ingEsp = true;
+                checkAndShowDashboard();
+                if (dashboardVisible) updateDashboard();
+            }, err => {
+                console.error('Error ingresos esperados:', err);
+                realtimeReady.ingEsp = true;
+                checkAndShowDashboard();
             });
-            console.log('Ingresos esperados:', ingresosEsperados.length);
-
-            // Actualizar estado global
-            allData = { transactions: transacciones, debts: deudas, budgets: presupuestos, goals: metas, suscripciones, ingresosEsperados };
-
-            // Mostrar dashboard
-            const modal     = document.getElementById('loginModal');
-            const container = document.querySelector('.container');
-            if (modal)     modal.style.display     = 'none';
-            if (container) container.style.display = 'block';
-
-            updateDashboard();
-
-        } catch (error) {
-            console.error('Error cargando datos:', error);
-            const container = document.querySelector('.container');
-            if (container) container.style.display = 'block';
-            updateDashboard();
-        }
+        realtimeUnsubs.push(unsubIngEsp);
     }
 
     // ============================================================
@@ -1692,17 +1882,35 @@
     });
 
     // ============================================================
+    // SWITCH GRAFICO BALANCE
+    // ============================================================
+    const balanceToggleEl = document.getElementById('balanceToggle');
+    const balanceToggleLabelEl = document.getElementById('balanceToggleLabel');
+    if (balanceToggleEl) {
+        balanceToggleEl.addEventListener('change', () => {
+            balanceChartMode = balanceToggleEl.checked;
+            if (balanceToggleLabelEl) {
+                balanceToggleLabelEl.textContent = balanceChartMode ? 'Balance del Periodo' : 'Saldo Acumulado';
+            }
+            const filtered = filterByPeriod(allData.transactions, currentPeriod);
+            updateBalanceChart(filtered);
+        });
+    }
+
+    // ============================================================
     // AUTH STATE
     // ============================================================
-    auth.onAuthStateChanged(async (user) => {
+    auth.onAuthStateChanged((user) => {
         const modal     = document.getElementById('loginModal');
         const container = document.querySelector('.container');
         if (user) {
-            if (modal)     modal.style.display     = 'none';
-            if (container) container.style.display = 'block';
             setText('userEmail', user.email);
-            await cargarDatosUsuario(user);
+            cargarDatosUsuario(user);
         } else {
+            // Cancelar todos los listeners de tiempo real al deslogear
+            realtimeUnsubs.forEach(fn => fn());
+            realtimeUnsubs = [];
+            dashboardVisible = false;
             if (modal)     modal.style.display     = 'flex';
             if (container) container.style.display = 'none';
         }

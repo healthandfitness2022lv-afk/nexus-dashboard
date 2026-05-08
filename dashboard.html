@@ -809,25 +809,34 @@
             }).format(amount);
         };
 
+        // Helper seguro para setear texto
+        const setText = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+
         // Actualizar dashboard
         const updateDashboard = () => {
             const filtered = filterDataByPeriod(currentPeriod);
             const stats = calculateStats(filtered);
 
             // Actualizar header
-            document.getElementById('totalIncome').textContent = formatCurrency(stats.totalIncome);
-            document.getElementById('totalExpense').textContent = formatCurrency(stats.totalExpense);
-            document.getElementById('totalBalance').className = 'info-value ' + (stats.balance >= 0 ? 'positive' : 'negative');
-            document.getElementById('totalBalance').textContent = formatCurrency(stats.balance);
+            setText('totalIncome', formatCurrency(stats.totalIncome));
+            setText('totalExpenses', formatCurrency(stats.totalExpense));
+            const balanceEl = document.getElementById('totalBalance');
+            if (balanceEl) {
+                balanceEl.className = 'info-value ' + (stats.balance >= 0 ? 'positive' : 'negative');
+                balanceEl.textContent = formatCurrency(stats.balance);
+            }
 
             // Actualizar métricas
-            document.getElementById('avgExpense').textContent = formatCurrency(stats.avgExpense);
-            document.getElementById('avgIncome').textContent = formatCurrency(stats.avgIncome);
-            document.getElementById('maxExpense').textContent = formatCurrency(stats.maxExpense);
-            document.getElementById('maxIncome').textContent = formatCurrency(stats.maxIncome);
-            document.getElementById('totalTransactions').textContent = stats.totalTransactions;
-            document.getElementById('savingsRatio').textContent = stats.savingsRatio + '%';
-            document.getElementById('lastUpdate').textContent = new Date().toLocaleString('es-ES');
+            setText('avgExpense', formatCurrency(stats.avgExpense));
+            setText('avgIncome', formatCurrency(stats.avgIncome));
+            setText('maxExpense', formatCurrency(stats.maxExpense));
+            setText('maxIncome', formatCurrency(stats.maxIncome));
+            setText('totalTransactions', stats.totalTransactions);
+            setText('savingsRatio', stats.savingsRatio + '%');
+            setText('lastUpdate', new Date().toLocaleString('es-ES'));
 
             // Actualizar gráficos
             updateAllCharts(filtered, stats);
@@ -1448,13 +1457,16 @@
                     .doc(user.uid)
                     .collection('metas')
                     .get();
-                const metas = metasSnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    nombre: doc.data().nombre,
-                    meta: doc.data().meta,
-                    actual: doc.data().montoActual || doc.data().actual || 0,
-                    emoji: '🎯'
-                }));
+                const metas = metasSnapshot.docs.map(doc => {
+                    const d = doc.data();
+                    return {
+                        id: doc.id,
+                        nombre: d.nombre || 'Sin nombre',
+                        meta: d.montoObjetivo || d.meta || 0,
+                        actual: d.montoActual || d.actual || 0,
+                        emoji: d.emoji || '🎯'
+                    };
+                });
 
                 console.log('✅ Metas cargadas:', metas.length);
 
@@ -1512,7 +1524,8 @@
 
             } catch (error) {
                 console.error('❌ Error cargando datos:', error.message);
-                alert('Error cargando datos: ' + error.message);
+                // Mostrar dashboard vacío en vez de un alert
+                updateDashboard();
             }
         }
 

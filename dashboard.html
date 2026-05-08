@@ -3,22 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXUS Finanzas - Dashboard Analítico Detallado</title>
-    <!-- Firebase Scripts (Compat version for simpler API) -->
+    <title>NEXUS Finanzas - Dashboard Analitico</title>
+    <!-- Firebase Scripts (Compat version) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -28,10 +22,7 @@
             padding: 20px;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
+        .container { max-width: 1400px; margin: 0 auto; }
 
         .header {
             background: white;
@@ -46,21 +37,11 @@
             gap: 20px;
         }
 
-        .header h1 {
-            font-size: 28px;
-            color: #667eea;
-            margin: 0;
-        }
+        .header h1 { font-size: 28px; color: #667eea; margin: 0; }
 
-        .header-info {
-            display: flex;
-            gap: 30px;
-            flex-wrap: wrap;
-        }
+        .header-info { display: flex; gap: 30px; flex-wrap: wrap; }
 
-        .info-box {
-            text-align: center;
-        }
+        .info-box { text-align: center; }
 
         .info-label {
             font-size: 12px;
@@ -70,17 +51,12 @@
             margin-bottom: 5px;
         }
 
-        .info-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #667eea;
-        }
+        .info-value { font-size: 22px; font-weight: bold; color: #667eea; }
+        .info-value.positive { color: #27ae60; }
+        .info-value.negative { color: #e74c3c; }
+        .info-value.saving { color: #764ba2; }
 
-        .period-selector {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
+        .period-selector { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
         .period-btn {
             padding: 8px 16px;
@@ -92,15 +68,8 @@
             transition: all 0.3s;
         }
 
-        .period-btn.active {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
-        }
-
-        .period-btn:hover {
-            border-color: #667eea;
-        }
+        .period-btn.active { background: #667eea; color: white; border-color: #667eea; }
+        .period-btn:hover { border-color: #667eea; }
 
         .grid {
             display: grid;
@@ -109,9 +78,8 @@
             margin-bottom: 30px;
         }
 
-        .grid.full {
-            grid-template-columns: 1fr;
-        }
+        .grid.full { grid-template-columns: 1fr; }
+        .grid.three { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
 
         .card {
             background: white;
@@ -121,10 +89,7 @@
             transition: transform 0.3s, box-shadow 0.3s;
         }
 
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 50px rgba(0,0,0,0.15);
-        }
+        .card:hover { transform: translateY(-3px); box-shadow: 0 15px 50px rgba(0,0,0,0.15); }
 
         .card h2 {
             font-size: 18px;
@@ -144,15 +109,8 @@
             text-transform: uppercase;
         }
 
-        .chart-container {
-            position: relative;
-            height: 300px;
-            margin-bottom: 20px;
-        }
-
-        .chart-container.tall {
-            height: 400px;
-        }
+        .chart-container { position: relative; height: 300px; margin-bottom: 20px; }
+        .chart-container.tall { height: 400px; }
 
         .stat-row {
             display: flex;
@@ -162,30 +120,12 @@
             font-size: 14px;
         }
 
-        .stat-row:last-child {
-            border-bottom: none;
-        }
-
-        .stat-label {
-            color: #666;
-        }
-
-        .stat-value {
-            font-weight: 600;
-            color: #333;
-        }
-
-        .stat-value.positive {
-            color: #27ae60;
-        }
-
-        .stat-value.negative {
-            color: #e74c3c;
-        }
-
-        .stat-value.neutral {
-            color: #3498db;
-        }
+        .stat-row:last-child { border-bottom: none; }
+        .stat-label { color: #666; }
+        .stat-value { font-weight: 600; color: #333; }
+        .stat-value.positive { color: #27ae60; }
+        .stat-value.negative { color: #e74c3c; }
+        .stat-value.neutral { color: #3498db; }
 
         .metric-group {
             display: grid;
@@ -202,24 +142,10 @@
             border-left: 4px solid #667eea;
         }
 
-        .metric-value {
-            font-size: 20px;
-            font-weight: bold;
-            color: #667eea;
-            margin: 5px 0;
-        }
+        .metric-value { font-size: 20px; font-weight: bold; color: #667eea; margin: 5px 0; }
+        .metric-label { font-size: 12px; color: #999; text-transform: uppercase; }
 
-        .metric-label {
-            font-size: 12px;
-            color: #999;
-            text-transform: uppercase;
-        }
-
-        .category-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
+        .category-list { display: flex; flex-direction: column; gap: 10px; }
 
         .category-item {
             display: flex;
@@ -231,19 +157,8 @@
             font-size: 14px;
         }
 
-        .category-item .emoji {
-            font-size: 20px;
-            margin-right: 10px;
-        }
-
-        .category-item .name {
-            flex: 1;
-        }
-
-        .category-item .amount {
-            font-weight: 600;
-            color: #667eea;
-        }
+        .category-item .name { flex: 1; }
+        .category-item .amount { font-weight: 600; color: #667eea; white-space: nowrap; margin-left: 8px; }
 
         .progress-bar {
             width: 100%;
@@ -258,7 +173,7 @@
             height: 100%;
             background: linear-gradient(90deg, #667eea, #764ba2);
             border-radius: 4px;
-            transition: width 0.3s;
+            transition: width 0.5s ease;
         }
 
         .alert {
@@ -271,30 +186,12 @@
             align-items: flex-start;
         }
 
-        .alert.warning {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            color: #856404;
-        }
+        .alert.warning { background: #fff3cd; border-left: 4px solid #ffc107; color: #856404; }
+        .alert.danger { background: #f8d7da; border-left: 4px solid #dc3545; color: #721c24; }
+        .alert.success { background: #d4edda; border-left: 4px solid #28a745; color: #155724; }
+        .alert.info { background: #d1ecf1; border-left: 4px solid #17a2b8; color: #0c5460; }
 
-        .alert.danger {
-            background: #f8d7da;
-            border-left: 4px solid #dc3545;
-            color: #721c24;
-        }
-
-        .alert.success {
-            background: #d4edda;
-            border-left: 4px solid #28a745;
-            color: #155724;
-        }
-
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-
+        .table { width: 100%; border-collapse: collapse; font-size: 14px; }
         .table th {
             background: #f8f9fa;
             padding: 12px;
@@ -303,50 +200,24 @@
             color: #333;
             border-bottom: 2px solid #e0e0e0;
         }
-
-        .table td {
-            padding: 12px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-
-        .table tr:hover {
-            background: #f8f9fa;
-        }
+        .table td { padding: 12px; border-bottom: 1px solid #e0e0e0; }
+        .table tr:hover { background: #f8f9fa; }
 
         .badge {
             display: inline-block;
-            padding: 4px 8px;
+            padding: 3px 8px;
             border-radius: 4px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
         }
+        .badge.necesario { background: #d4edda; color: #155724; }
+        .badge.innecesario { background: #f8d7da; color: #721c24; }
+        .badge.inversion { background: #d1ecf1; color: #0c5460; }
+        .badge.ahorro { background: #e2e3e5; color: #383d41; }
+        .badge.ingreso { background: #d4edda; color: #155724; }
+        .badge.gasto { background: #f8d7da; color: #721c24; }
 
-        .badge.necesario {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .badge.innecesario {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .badge.inversion {
-            background: #d1ecf1;
-            color: #0c5460;
-        }
-
-        .badge.ahorro {
-            background: #e2e3e5;
-            color: #383d41;
-        }
-
-        .tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #e0e0e0;
-        }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e0e0e0; flex-wrap: wrap; }
 
         .tab {
             padding: 12px 20px;
@@ -357,25 +228,12 @@
             color: #999;
             border-bottom: 3px solid transparent;
             transition: all 0.3s;
+            white-space: nowrap;
         }
 
-        .tab.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .radar-container {
-            position: relative;
-            height: 350px;
-        }
+        .tab.active { color: #667eea; border-bottom-color: #667eea; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
 
         .debt-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -384,27 +242,51 @@
             border-radius: 8px;
             margin-bottom: 10px;
         }
+        .debt-card.completada { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+        .debt-card .desc { font-weight: 600; margin-bottom: 4px; }
+        .debt-card .amount { font-size: 18px; margin-bottom: 8px; }
+        .debt-card .progress-debt { background: rgba(255,255,255,0.3); height: 6px; border-radius: 3px; overflow: hidden; }
+        .debt-card .progress-debt-fill { background: rgba(255,255,255,0.9); height: 100%; }
 
-        .debt-card .desc {
-            font-weight: 600;
-            margin-bottom: 8px;
+        .saving-card {
+            background: linear-gradient(135deg, #764ba2, #667eea);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .debt-card .amount {
-            font-size: 18px;
-            margin-bottom: 8px;
+        .suscripcion-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 14px;
         }
 
-        .debt-card .progress {
-            background: rgba(255,255,255,0.3);
-            height: 6px;
-            border-radius: 3px;
-            overflow: hidden;
+        .ingreso-esp-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #f0fff4;
+            border-left: 4px solid #27ae60;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 14px;
         }
 
-        .debt-card .progress-fill {
-            background: rgba(255,255,255,0.9);
-            height: 100%;
+        .loading-spinner {
+            text-align: center;
+            padding: 30px;
+            color: #999;
+            font-size: 14px;
         }
 
         .footer {
@@ -415,162 +297,178 @@
             font-size: 12px;
         }
 
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-size: 14px;
+        }
+
         @media (max-width: 768px) {
-            .grid {
-                grid-template-columns: 1fr;
-            }
-
-            .header {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .header-info {
-                justify-content: center;
-                width: 100%;
-            }
-
-            .period-selector {
-                justify-content: center;
-            }
+            .grid { grid-template-columns: 1fr; }
+            .grid.three { grid-template-columns: 1fr; }
+            .header { flex-direction: column; text-align: center; }
+            .header-info { justify-content: center; width: 100%; }
+            .period-selector { justify-content: center; }
+            body { padding: 10px; }
         }
     </style>
 </head>
 <body>
     <!-- Modal de Login -->
-    <div id="loginModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center;">
-        <div style="background: white; border-radius: 12px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-width: 400px; width: 90%;">
-            <h2 style="color: #667eea; margin-bottom: 30px; text-align: center;">🔐 Login NEXUS Finanzas</h2>
+    <div id="loginModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:white; border-radius:12px; padding:40px; box-shadow:0 10px 40px rgba(0,0,0,0.2); max-width:400px; width:90%;">
+            <h2 style="color:#667eea; margin-bottom:30px; text-align:center;">Login NEXUS Finanzas</h2>
 
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; margin-bottom: 8px; color: #666; font-weight: 600;">Email:</label>
-                <input type="email" id="loginEmail" placeholder="tu@email.com" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+            <div id="loginError" style="display:none; background:#f8d7da; border-left:4px solid #dc3545; color:#721c24; padding:12px; border-radius:8px; margin-bottom:16px; font-size:14px;"></div>
+
+            <div style="margin-bottom:20px;">
+                <label style="display:block; margin-bottom:8px; color:#666; font-weight:600;">Email:</label>
+                <input type="email" id="loginEmail" placeholder="tu@email.com"
+                    style="width:100%; padding:12px; border:1px solid #ddd; border-radius:8px; font-size:14px;">
             </div>
 
-            <div style="margin-bottom: 30px;">
-                <label style="display: block; margin-bottom: 8px; color: #666; font-weight: 600;">Contraseña:</label>
-                <input type="password" id="loginPassword" placeholder="••••••••" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+            <div style="margin-bottom:30px;">
+                <label style="display:block; margin-bottom:8px; color:#666; font-weight:600;">Contrasena:</label>
+                <input type="password" id="loginPassword" placeholder="..."
+                    style="width:100%; padding:12px; border:1px solid #ddd; border-radius:8px; font-size:14px;">
             </div>
 
-            <button id="loginBtn" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; margin-bottom: 10px; font-size: 16px;">
+            <button id="loginBtn"
+                style="width:100%; padding:12px; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:white; border:none; border-radius:8px; font-weight:600; cursor:pointer; margin-bottom:10px; font-size:16px;">
                 Ingresar
             </button>
 
-            <button id="googleLoginBtn" style="width: 100%; padding: 12px; background: white; color: #667eea; border: 2px solid #667eea; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 16px;">
-                📱 Login con Google
+            <button id="googleLoginBtn"
+                style="width:100%; padding:12px; background:white; color:#667eea; border:2px solid #667eea; border-radius:8px; font-weight:600; cursor:pointer; font-size:16px;">
+                Login con Google
             </button>
-
-            <p style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
-                Demo: usa cualquier email y contraseña
-            </p>
         </div>
     </div>
 
-    <div class="container" style="display: none;">
+    <div class="container" style="display:none;">
+        <!-- HEADER -->
         <div class="header">
             <div>
-                <h1>📊 NEXUS Finanzas</h1>
-                <p style="color: #999; margin-top: 5px;">Dashboard Analítico Detallado</p>
-                <p id="userEmail" style="color: #667eea; margin-top: 8px; font-size: 14px; font-weight: 600;"></p>
+                <h1>NEXUS Finanzas</h1>
+                <p style="color:#999; margin-top:5px;">Dashboard Analitico</p>
+                <p id="userEmail" style="color:#667eea; margin-top:8px; font-size:14px; font-weight:600;"></p>
             </div>
             <div class="header-info">
                 <div class="info-box">
-                    <div class="info-label">Período</div>
-                    <div class="info-value" id="periodDisplay">Hoy</div>
+                    <div class="info-label">Periodo</div>
+                    <div class="info-value" id="periodDisplay">Este Mes</div>
                 </div>
                 <div class="info-box">
-                    <div class="info-label">Total Ingresos</div>
-                    <div class="info-value positive" id="totalIncome">$0</div>
+                    <div class="info-label">Ingresos</div>
+                    <div class="info-value positive" id="totalIncome">0</div>
                 </div>
                 <div class="info-box">
                     <div class="info-label">Gastos Reales</div>
-                    <div class="info-value negative" id="totalExpenses">$0</div>
+                    <div class="info-value negative" id="totalExpenses">0</div>
                 </div>
                 <div class="info-box">
-                    <div class="info-label">🎯 Ahorrado</div>
-                    <div class="info-value neutral" id="totalAhorro">$0</div>
+                    <div class="info-label">Ahorro</div>
+                    <div class="info-value saving" id="totalSaving">0</div>
                 </div>
                 <div class="info-box">
                     <div class="info-label">Balance</div>
-                    <div class="info-value" id="totalBalance">$0</div>
+                    <div class="info-value" id="totalBalance">0</div>
                 </div>
             </div>
             <div class="period-selector">
                 <button class="period-btn" data-period="day">Hoy</button>
                 <button class="period-btn" data-period="week">Esta Semana</button>
                 <button class="period-btn active" data-period="month">Este Mes</button>
-                <button class="period-btn" data-period="year">Este Año</button>
+                <button class="period-btn" data-period="year">Este Ano</button>
                 <button class="period-btn" data-period="all">Todo</button>
-                <button id="logoutBtn" style="padding: 8px 16px; border: 2px solid #e74c3c; background: white; color: #e74c3c; border-radius: 8px; cursor: pointer; font-weight: 500; margin-left: auto;">🚪 Logout</button>
+                <button id="logoutBtn"
+                    style="padding:8px 16px; border:2px solid #e74c3c; background:white; color:#e74c3c; border-radius:8px; cursor:pointer; font-weight:500; margin-left:10px;">
+                    Logout
+                </button>
             </div>
         </div>
 
+        <!-- GRAFICO EVOLUCION SALDO -->
         <div class="grid full">
             <div class="card">
-                <h2>📈 Evolución de Saldo</h2>
+                <h2>Evolucion de Saldo</h2>
                 <div class="chart-container tall">
                     <canvas id="balanceChart"></canvas>
                 </div>
             </div>
         </div>
 
+        <!-- GRAFICOS: INGRESOS VS GASTOS + DISTRIBUCION -->
         <div class="grid">
             <div class="card">
-                <h2>💰 Ingresos vs Gastos</h2>
+                <h2>Ingresos vs Gastos Reales</h2>
                 <div class="chart-container">
                     <canvas id="incomeExpenseChart"></canvas>
                 </div>
             </div>
-
             <div class="card">
-                <h2>📊 Distribución de Gastos</h2>
+                <h2>Distribucion de Gastos</h2>
                 <div class="chart-container">
                     <canvas id="expenseDistributionChart"></canvas>
                 </div>
             </div>
         </div>
 
+        <!-- CATEGORIAS + CLASIFICACION -->
         <div class="grid">
             <div class="card">
-                <h2>🏷️ Gastos por Categoría</h2>
+                <h2>Gastos por Categoria</h2>
                 <div id="categoryBreakdown" class="category-list"></div>
             </div>
-
             <div class="card">
-                <h2>🎯 Análisis de Clasificación</h2>
+                <h2>Clasificacion de Gastos</h2>
                 <div class="chart-container">
                     <canvas id="classificationChart"></canvas>
                 </div>
             </div>
         </div>
 
+        <!-- PRESUPUESTOS + METAS -->
         <div class="grid">
             <div class="card">
-                <h2>📅 Top 10 Transacciones</h2>
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Descripción</th>
-                            <th>Categoría</th>
-                            <th>Monto</th>
-                            <th>Tipo</th>
-                        </tr>
-                    </thead>
-                    <tbody id="topTransactionsTable"></tbody>
-                </table>
+                <h2>Presupuestos</h2>
+                <div id="budgetsList"><div class="loading-spinner">Cargando presupuestos...</div></div>
             </div>
-
             <div class="card">
-                <h2>💳 Deudas Activas</h2>
-                <div id="deudasList"></div>
+                <h2>Metas de Ahorro</h2>
+                <div id="goalsList"><div class="loading-spinner">Cargando metas...</div></div>
             </div>
         </div>
 
+        <!-- AHORRO + DEUDAS -->
+        <div class="grid">
+            <div class="card">
+                <h2>Ahorro del Periodo</h2>
+                <div id="savingsList"><div class="loading-spinner">Cargando ahorro...</div></div>
+            </div>
+            <div class="card">
+                <h2>Deudas Activas</h2>
+                <div id="deudasList"><div class="loading-spinner">Cargando deudas...</div></div>
+            </div>
+        </div>
+
+        <!-- SUSCRIPCIONES + INGRESOS ESPERADOS -->
+        <div class="grid">
+            <div class="card">
+                <h2>Suscripciones Activas</h2>
+                <div id="suscripcionesList"><div class="loading-spinner">Cargando suscripciones...</div></div>
+            </div>
+            <div class="card">
+                <h2>Ingresos Esperados</h2>
+                <div id="ingresosEsperadosList"><div class="loading-spinner">Cargando ingresos esperados...</div></div>
+            </div>
+        </div>
+
+        <!-- METRICAS DETALLADAS (TABS) -->
         <div class="grid full">
             <div class="card">
-                <h2>📊 Métricas Detalladas</h2>
-
+                <h2>Metricas Detalladas</h2>
                 <div class="tabs">
                     <button class="tab active" data-tab="overview">Resumen</button>
                     <button class="tab" data-tab="trends">Tendencias</button>
@@ -582,19 +480,19 @@
                     <div class="metric-group">
                         <div class="metric">
                             <div class="metric-label">Gasto Promedio</div>
-                            <div class="metric-value" id="avgExpense">$0</div>
+                            <div class="metric-value" id="avgExpense">0</div>
                         </div>
                         <div class="metric">
                             <div class="metric-label">Ingreso Promedio</div>
-                            <div class="metric-value positive" id="avgIncome">$0</div>
+                            <div class="metric-value positive" id="avgIncome">0</div>
                         </div>
                         <div class="metric">
                             <div class="metric-label">Mayor Gasto</div>
-                            <div class="metric-value" id="maxExpense">$0</div>
+                            <div class="metric-value" id="maxExpense">0</div>
                         </div>
                         <div class="metric">
                             <div class="metric-label">Mayor Ingreso</div>
-                            <div class="metric-value positive" id="maxIncome">$0</div>
+                            <div class="metric-value positive" id="maxIncome">0</div>
                         </div>
                         <div class="metric">
                             <div class="metric-label">Total Transacciones</div>
@@ -627,1056 +525,1188 @@
             </div>
         </div>
 
-        <div class="grid">
+        <!-- TOP TRANSACCIONES -->
+        <div class="grid full">
             <div class="card">
-                <h2>📍 Presupuestos</h2>
-                <div id="budgetsList"></div>
-            </div>
-
-            <div class="card">
-                <h2>🎯 Metas</h2>
-                <div id="goalsList"></div>
+                <h2>Top Transacciones</h2>
+                <div style="overflow-x:auto;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Descripcion</th>
+                                <th>Categoria</th>
+                                <th>Monto</th>
+                                <th>Tipo</th>
+                                <th>Clasificacion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="topTransactionsTable"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
         <div class="footer">
-            <p>Dashboard generado automáticamente | Última actualización: <span id="lastUpdate">--</span></p>
-            <p>NEXUS Finanzas © 2025 - Herramienta de Análisis Financiero Detallado</p>
+            <p>Dashboard NEXUS Finanzas | Ultima actualizacion: <span id="lastUpdate">--</span></p>
+            <p>NEXUS Finanzas 2025</p>
         </div>
     </div>
 
     <script>
-        const chartColors = {
-            primary: '#667eea',
-            secondary: '#764ba2',
-            success: '#27ae60',
-            danger: '#e74c3c',
-            warning: '#f39c12',
-            info: '#3498db',
-            light: '#ecf0f1',
-            dark: '#2c3e50'
-        };
+    // ============================================================
+    // UTILIDADES
+    // ============================================================
+    const chartColors = {
+        primary: '#667eea', secondary: '#764ba2', success: '#27ae60',
+        danger: '#e74c3c', warning: '#f39c12', info: '#3498db',
+        saving: '#9b59b6', light: '#ecf0f1', dark: '#2c3e50'
+    };
 
-        // Datos simulados (reemplazar con datos reales de API/Firebase)
-        const generateMockData = () => {
-            const today = new Date();
-            const transactions = [];
-            const debts = [];
-            const budgets = [];
-            const goals = [];
+    // Formato numerico chileno sin simbolo de moneda
+    const formatNum = (amount) => {
+        const n = Number(amount) || 0;
+        return new Intl.NumberFormat('es-CL').format(Math.round(n));
+    };
 
-            // Generar transacciones
-            for (let i = 0; i < 90; i++) {
-                const date = new Date(today);
-                date.setDate(date.getDate() - i);
+    // Helper null-safe para setear textContent
+    const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    };
 
-                const isIncome = Math.random() > 0.75;
-                const amount = isIncome
-                    ? Math.random() * 3000 + 500
-                    : Math.random() * 500 + 10;
+    // Helper null-safe para setear innerHTML
+    const setHTML = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = value;
+    };
 
-                const categories = isIncome
-                    ? ['Salario', 'Freelance', 'Inversiones']
-                    : ['Comida', 'Transporte', 'Entretenimiento', 'Servicios', 'Compras', 'Salud'];
+    // Parsear fecha desde Firestore Timestamp o string ISO
+    const parseDate = (f) => {
+        if (!f) return new Date(0);
+        if (typeof f === 'object' && typeof f.toDate === 'function') return f.toDate();
+        if (f instanceof Date) return f;
+        return new Date(f);
+    };
 
-                const category = categories[Math.floor(Math.random() * categories.length)];
+    // Calcular monto mensual segun frecuencia
+    const toMonthlyAmount = (monto, frecuencia) => {
+        const f = (frecuencia || '').toLowerCase();
+        if (f === 'semanal')   return monto * 4.33;
+        if (f === 'quincenal') return monto * 2;
+        if (f === 'anual')     return monto / 12;
+        return monto; // mensual por defecto
+    };
 
-                const classifications = ['necesario', 'innecesario', 'inversion', 'ahorro'];
-                const classification = isIncome ? 'ingreso' : classifications[Math.floor(Math.random() * classifications.length)];
+    // ============================================================
+    // ESTADO GLOBAL
+    // ============================================================
+    let allData = {
+        transactions: [],
+        debts: [],
+        budgets: [],
+        goals: [],
+        suscripciones: [],
+        ingresosEsperados: []
+    };
+    let currentPeriod = 'month';
+    let charts = {};
 
-                transactions.push({
-                    id: `tx_${i}`,
-                    descripcion: `${category} - Transacción ${i}`,
-                    monto: amount,
-                    tipo: isIncome ? 'ingreso' : 'gasto',
-                    categoria: category,
-                    subcategoria: 'General',
-                    emoji: '🏪',
-                    fecha: date.toISOString(),
-                    clasificacion: classification
-                });
+    // ============================================================
+    // FILTRADO POR PERIODO
+    // ============================================================
+    const getPeriodStartDate = (period) => {
+        const now = new Date();
+        switch (period) {
+            case 'day': {
+                const d = new Date(now); d.setHours(0,0,0,0); return d;
             }
-
-            // Generar deudas
-            debts.push({
-                id: 'debt_1',
-                descripcion: 'Tarjeta de Crédito',
-                montoTotal: 5000,
-                totalAbonado: 2000,
-                emoji: '💳',
-                saldoPendiente: 3000,
-                categoria: 'Crédito',
-                tipo: 'gasto'
-            });
-
-            debts.push({
-                id: 'debt_2',
-                descripcion: 'Préstamo Personal',
-                montoTotal: 10000,
-                totalAbonado: 4000,
-                emoji: '🏦',
-                saldoPendiente: 6000,
-                categoria: 'Préstamo',
-                tipo: 'gasto'
-            });
-
-            // Generar presupuestos
-            budgets.push({
-                categoria: 'Comida',
-                limite: 500,
-                frecuencia: 'mensual',
-                gastado: 450,
-                emoji: '🍔'
-            });
-
-            budgets.push({
-                categoria: 'Entretenimiento',
-                limite: 300,
-                frecuencia: 'mensual',
-                gastado: 280,
-                emoji: '🎮'
-            });
-
-            // Generar metas
-            goals.push({
-                nombre: 'Fondo de Emergencia',
-                meta: 10000,
-                actual: 6500,
-                emoji: '🛡️'
-            });
-
-            goals.push({
-                nombre: 'Vacaciones 2025',
-                meta: 5000,
-                actual: 2800,
-                emoji: '✈️'
-            });
-
-            return { transactions, debts, budgets, goals };
-        };
-
-        let allData = generateMockData();
-        let currentPeriod = 'month';
-
-        // ── Formato CLP idéntico a la app Flutter ──────────────────────────
-        const formatCLP = (v) => {
-            const n = Math.round(Math.abs(v));
-            const s = n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-            return v < 0 ? `-$${s}` : `$${s}`;
-        };
-
-        // ── Helpers de lógica (replica transaction_helpers.dart) ───────────
-        const esAhorro    = t => t.tipo === 'gasto' && (t.categoria || '').startsWith('Ahorro');
-        const esGastoReal = t => t.tipo === 'gasto' && !esAhorro(t);
-
-        const totalIngresos   = lista => lista.filter(t => t.tipo === 'ingreso').reduce((s, t) => s + t.monto, 0);
-        const totalAhorro     = lista => lista.filter(esAhorro).reduce((s, t) => s + t.monto, 0);
-        const totalGastosReal = lista => lista.filter(esGastoReal).reduce((s, t) => s + t.monto, 0);
-
-        // Gastos por categoría (incluye ahorro, para gráfico de distribución)
-        const gastosPorCat = lista => {
-            const map = {};
-            lista.filter(t => t.tipo === 'gasto').forEach(t => {
-                map[t.categoria] = (map[t.categoria] || 0) + t.monto;
-            });
-            return map;
-        };
-
-        // Gasto neto por categoría para presupuestos (gastos − ingresos de esa cat, clamp ≥ 0)
-        const gastoNetoPorCat = lista => {
-            const map = {};
-            lista.forEach(t => {
-                if (t.tipo === 'gasto') map[t.categoria] = (map[t.categoria] || 0) + t.monto;
-                else if (t.tipo === 'ingreso') map[t.categoria] = (map[t.categoria] || 0) - t.monto;
-            });
-            Object.keys(map).forEach(k => { if (map[k] <= 0) delete map[k]; });
-            return map;
-        };
-
-        // ── Filtrar por período (igual que FiltroPeriodo de la app) ─────────
-        const filterDataByPeriod = (period) => {
-            const hoy = new Date();
-            let start = new Date();
-
-            switch (period) {
-                case 'day':
-                    start = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-                    break;
-                case 'week': {
-                    const dow = hoy.getDay() === 0 ? 6 : hoy.getDay() - 1; // lunes=0
-                    start = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - dow);
-                    break;
-                }
-                case 'month':
-                    start = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-                    break;
-                case 'year':
-                    start = new Date(hoy.getFullYear(), 0, 1);
-                    break;
-                case 'all':
-                    start = new Date(0);
-                    break;
+            case 'week': {
+                const w = new Date(now);
+                w.setDate(w.getDate() - w.getDay());
+                w.setHours(0,0,0,0);
+                return w;
             }
+            case 'month':
+                return new Date(now.getFullYear(), now.getMonth(), 1);
+            case 'year':
+                return new Date(now.getFullYear(), 0, 1);
+            case 'all':
+            default:
+                return new Date(0);
+        }
+    };
 
-            return allData.transactions.filter(t => {
-                const f = t.fecha instanceof Date ? t.fecha : new Date(t.fecha);
-                return f >= start;
-            });
+    const filterByPeriod = (transactions, period) => {
+        const start = getPeriodStartDate(period);
+        return transactions.filter(t => parseDate(t.fecha) >= start);
+    };
+
+    // Filtrar transacciones para un presupuesto segun su frecuencia y categoria
+    const filterForBudget = (transactions, frecuencia, categoria) => {
+        const now = new Date();
+        let start;
+        const f = (frecuencia || '').toLowerCase();
+        if (f === 'mensual') {
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+        } else if (f === 'semanal') {
+            start = new Date(now);
+            start.setDate(start.getDate() - start.getDay());
+            start.setHours(0,0,0,0);
+        } else if (f === 'quincenal') {
+            start = new Date(now);
+            start.setDate(start.getDate() - 15);
+        } else {
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+        }
+        const catLower = (categoria || '').toLowerCase().trim();
+        return transactions.filter(t => {
+            const fecha = parseDate(t.fecha);
+            const tCat = (t.categoria || '').toLowerCase().trim();
+            return fecha >= start && tCat === catLower;
+        });
+    };
+
+    // ============================================================
+    // CALCULO DE ESTADISTICAS
+    // ============================================================
+    const calcStats = (transactions) => {
+        const ingresos = transactions.filter(t => t.tipo === 'ingreso');
+        const todosGastos = transactions.filter(t => t.tipo === 'gasto');
+        // Gastos reales: gastos cuya categoria NO empieza con 'Ahorro'
+        const gastosReales = todosGastos.filter(t => !String(t.categoria || '').startsWith('Ahorro'));
+        // Transacciones de ahorro: gastos con categoria que empieza con 'Ahorro'
+        const ahorroTx = todosGastos.filter(t => String(t.categoria || '').startsWith('Ahorro'));
+
+        const totalIngresos      = ingresos.reduce((s, t) => s + (Number(t.monto)||0), 0);
+        const totalGastosReales  = gastosReales.reduce((s, t) => s + (Number(t.monto)||0), 0);
+        const totalAhorro        = ahorroTx.reduce((s, t) => s + (Number(t.monto)||0), 0);
+        const balance            = totalIngresos - totalGastosReales;
+
+        return {
+            ingresos, todosGastos, gastosReales, ahorroTx,
+            totalIngresos, totalGastosReales, totalAhorro, balance,
+            avgIngreso: ingresos.length > 0 ? totalIngresos / ingresos.length : 0,
+            avgGasto: gastosReales.length > 0 ? totalGastosReales / gastosReales.length : 0,
+            maxIngreso: ingresos.length > 0 ? Math.max(...ingresos.map(t => Number(t.monto)||0)) : 0,
+            maxGasto: gastosReales.length > 0 ? Math.max(...gastosReales.map(t => Number(t.monto)||0)) : 0,
+            totalTransacciones: transactions.length,
+            ratioAhorro: totalIngresos > 0 ? ((balance / totalIngresos) * 100).toFixed(1) : '0.0'
         };
+    };
 
-        // ── Calcular estadísticas ─────────────────────────────────────────
-        const calculateStats = (transactions) => {
-            const ingresos  = transactions.filter(t => t.tipo === 'ingreso');
-            const gastos    = transactions.filter(t => t.tipo === 'gasto' && !esAhorro(t));
-            const ahorros   = transactions.filter(esAhorro);
+    // ============================================================
+    // ACTUALIZAR DASHBOARD
+    // ============================================================
+    const updateDashboard = () => {
+        const filtered = filterByPeriod(allData.transactions, currentPeriod);
+        const stats = calcStats(filtered);
 
-            const totIng  = totalIngresos(transactions);
-            const totGas  = totalGastosReal(transactions);
-            const totAho  = totalAhorro(transactions);
-            // Balance = ingresos − gastos reales − ahorro (igual que la app)
-            const balance = totIng - totGas - totAho;
+        // Header
+        setText('totalIncome', formatNum(stats.totalIngresos));
+        setText('totalExpenses', formatNum(stats.totalGastosReales));
+        setText('totalSaving', formatNum(stats.totalAhorro));
 
-            return {
-                totalIncome:       totIng,
-                totalExpense:      totGas,
-                totalAhorro:       totAho,
-                balance,
-                avgIncome:         ingresos.length > 0 ? totIng / ingresos.length : 0,
-                avgExpense:        gastos.length   > 0 ? totGas / gastos.length   : 0,
-                maxIncome:         ingresos.length > 0 ? Math.max(...ingresos.map(t => t.monto)) : 0,
-                maxExpense:        gastos.length   > 0 ? Math.max(...gastos.map(t => t.monto))   : 0,
-                totalTransactions: transactions.length,
-                savingsRatio:      totIng > 0 ? ((totAho / totIng) * 100).toFixed(1) : 0,
-            };
-        };
+        const balEl = document.getElementById('totalBalance');
+        if (balEl) {
+            balEl.className = 'info-value ' + (stats.balance >= 0 ? 'positive' : 'negative');
+            balEl.textContent = formatNum(stats.balance);
+        }
 
-        // Alias para que el resto del código que usa formatCurrency siga funcionando
-        const formatCurrency = formatCLP;
+        // Metricas tab resumen
+        setText('avgExpense', formatNum(stats.avgGasto));
+        setText('avgIncome', formatNum(stats.avgIngreso));
+        setText('maxExpense', formatNum(stats.maxGasto));
+        setText('maxIncome', formatNum(stats.maxIngreso));
+        setText('totalTransactions', stats.totalTransacciones);
+        setText('savingsRatio', stats.ratioAhorro + '%');
+        setText('lastUpdate', new Date().toLocaleString('es-CL'));
 
-        // Helper seguro para setear texto
-        const setText = (id, value) => {
-            const el = document.getElementById(id);
-            if (el) el.textContent = value;
-        };
+        // Graficos y secciones
+        updateAllCharts(filtered, stats);
+        updateCategoryBreakdown(stats.gastosReales);
+        updateTopTransactions(filtered);
+        updateBudgetsList(allData.transactions);
+        updateGoalsList();
+        updateSavingsList(stats.ahorroTx);
+        updateDebtsList();
+        updateSuscripcionesList();
+        updateIngresosEsperadosList();
+        updateInsights(filtered, stats);
+    };
 
-        // Actualizar dashboard
-        const updateDashboard = () => {
-            const filtered = filterDataByPeriod(currentPeriod);
-            const stats = calculateStats(filtered);
+    // ============================================================
+    // GRAFICOS
+    // ============================================================
+    const destroyChart = (key) => {
+        if (charts[key]) { charts[key].destroy(); charts[key] = null; }
+    };
 
-            // Header
-            setText('totalIncome',    formatCLP(stats.totalIncome));
-            setText('totalExpenses',  formatCLP(stats.totalExpense));
-            const balanceEl = document.getElementById('totalBalance');
-            if (balanceEl) {
-                balanceEl.className = 'info-value ' + (stats.balance >= 0 ? 'positive' : 'negative');
-                balanceEl.textContent = formatCLP(stats.balance);
+    // Evolucion de saldo (usando gastos reales, excluyendo ahorro)
+    const updateBalanceChart = (transactions) => {
+        destroyChart('balance');
+        const canvasEl = document.getElementById('balanceChart');
+        if (!canvasEl) return;
+
+        const sorted = [...transactions].sort((a, b) => parseDate(a.fecha) - parseDate(b.fecha));
+        const dailyMap = {};
+        let running = 0;
+
+        sorted.forEach(t => {
+            const fecha = parseDate(t.fecha);
+            const key = fecha.toLocaleDateString('es-CL');
+            const isAhorro = String(t.categoria || '').startsWith('Ahorro');
+            if (t.tipo === 'ingreso') {
+                running += Number(t.monto) || 0;
+            } else if (t.tipo === 'gasto' && !isAhorro) {
+                running -= Number(t.monto) || 0;
             }
+            dailyMap[key] = running;
+        });
 
-            // Métricas
-            setText('avgExpense',         formatCLP(stats.avgExpense));
-            setText('avgIncome',          formatCLP(stats.avgIncome));
-            setText('maxExpense',         formatCLP(stats.maxExpense));
-            setText('maxIncome',          formatCLP(stats.maxIncome));
-            setText('totalTransactions',  stats.totalTransactions);
-            setText('savingsRatio',       stats.savingsRatio + '%');
-            setText('lastUpdate',         new Date().toLocaleString('es-ES'));
+        const labels = Object.keys(dailyMap);
+        const data   = Object.values(dailyMap);
 
-            // Ahorro del período
-            const ahorroEl = document.getElementById('totalAhorro');
-            if (ahorroEl) ahorroEl.textContent = formatCLP(stats.totalAhorro);
+        if (labels.length === 0) return;
 
-            // Actualizar gráficos
-            updateAllCharts(filtered, stats);
-            updateCategoryBreakdown(filtered);
-            updateTopTransactions(filtered);
-            updateDebtsList();
-            updateBudgetsList();
-            updateGoalsList();
-            updateInsights(filtered, stats);
-        };
-
-        let charts = {};
-
-        // Gráfico de Evolución de Saldo
-        const updateBalanceChart = (transactions) => {
-            if (charts.balance) charts.balance.destroy();
-
-            const dailyData = {};
-            let balance = 0;
-
-            transactions.sort((a, b) => new Date(a.fecha) - new Date(b.fecha)).forEach(t => {
-                const date = new Date(t.fecha).toLocaleDateString('es-ES');
-                balance += (t.tipo === 'ingreso' ? t.monto : -t.monto);
-                dailyData[date] = balance;
-            });
-
-            const ctx = document.getElementById('balanceChart').getContext('2d');
-            charts.balance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: Object.keys(dailyData),
-                    datasets: [{
-                        label: 'Saldo Acumulado',
-                        data: Object.values(dailyData),
-                        borderColor: chartColors.primary,
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 3,
-                        pointBackgroundColor: chartColors.primary,
-                        pointBorderColor: 'white',
-                        pointBorderWidth: 2
-                    }]
+        const ctx = canvasEl.getContext('2d');
+        charts.balance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Saldo Acumulado',
+                    data,
+                    borderColor: chartColors.primary,
+                    backgroundColor: 'rgba(102,126,234,0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: labels.length > 60 ? 0 : 3,
+                    pointBackgroundColor: chartColors.primary,
+                    pointBorderColor: 'white',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'top' },
+                    datalabels: { display: false }
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: true, position: 'top' },
-                        datalabels: { display: false }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { callback: v => formatCurrency(v) }
+                scales: {
+                    y: { ticks: { callback: v => formatNum(v) } }
+                }
+            }
+        });
+    };
+
+    // Ingresos vs Gastos Reales vs Ahorro (barras)
+    const updateIncomeExpenseChart = (stats) => {
+        destroyChart('incomeExpense');
+        const canvasEl = document.getElementById('incomeExpenseChart');
+        if (!canvasEl) return;
+
+        const ctx = canvasEl.getContext('2d');
+        charts.incomeExpense = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Ingresos', 'Gastos Reales', 'Ahorro'],
+                datasets: [{
+                    label: 'Monto',
+                    data: [stats.totalIngresos, stats.totalGastosReales, stats.totalAhorro],
+                    backgroundColor: [chartColors.success, chartColors.danger, chartColors.saving],
+                    borderRadius: 8,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        color: 'white',
+                        font: { weight: 'bold', size: 11 },
+                        formatter: v => formatNum(v)
+                    }
+                },
+                scales: { y: { beginAtZero: true, ticks: { callback: v => formatNum(v) } } }
+            }
+        });
+    };
+
+    // Distribucion de gastos (dona: gastos reales por categoria + ahorro como segmento)
+    const updateExpenseDistributionChart = (gastosReales, totalAhorro) => {
+        destroyChart('distribution');
+        const canvasEl = document.getElementById('expenseDistributionChart');
+        if (!canvasEl) return;
+
+        const catTotals = {};
+        gastosReales.forEach(t => {
+            const cat = t.categoria || 'Sin Categoria';
+            catTotals[cat] = (catTotals[cat] || 0) + (Number(t.monto) || 0);
+        });
+
+        const labels = Object.keys(catTotals);
+        const data   = Object.values(catTotals);
+
+        if (totalAhorro > 0) {
+            labels.push('Ahorro');
+            data.push(totalAhorro);
+        }
+
+        if (labels.length === 0) return;
+
+        const palette = [
+            '#667eea','#764ba2','#f093fb','#4facfe','#00f2fe',
+            '#43e97b','#fa709a','#fee140','#30cfd0','#a8edea','#9b59b6'
+        ];
+
+        const ctx = canvasEl.getContext('2d');
+        charts.distribution = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels,
+                datasets: [{
+                    data,
+                    backgroundColor: palette.slice(0, labels.length),
+                    borderColor: 'white',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { font: { size: 11 } } },
+                    datalabels: {
+                        color: 'white',
+                        font: { weight: 'bold', size: 10 },
+                        formatter: (v, ctx) => {
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            if (!total) return '';
+                            const pct = (v / total * 100).toFixed(1);
+                            return parseFloat(pct) > 5 ? pct + '%' : '';
                         }
                     }
                 }
-            });
-        };
-
-        // Gráfico Ingresos vs Gastos
-        const updateIncomeExpenseChart = (transactions, stats) => {
-            if (charts.incomeExpense) charts.incomeExpense.destroy();
-
-            const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
-            charts.incomeExpense = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['Ingresos', 'Gastos'],
-                    datasets: [{
-                        label: 'Monto',
-                        data: [stats.totalIncome, stats.totalExpense],
-                        backgroundColor: [chartColors.success, chartColors.danger],
-                        borderRadius: 8,
-                        borderSkipped: false
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        datalabels: {
-                            color: 'white',
-                            font: { weight: 'bold' },
-                            formatter: v => formatCurrency(v)
-                        }
-                    },
-                    scales: {
-                        y: { beginAtZero: true, ticks: { callback: v => formatCurrency(v) } }
-                    }
-                }
-            });
-        };
-
-        // Gráfico Distribución de Gastos
-        const updateExpenseDistributionChart = (transactions) => {
-            if (charts.distribution) charts.distribution.destroy();
-
-            const expenses = transactions.filter(t => t.tipo === 'gasto');
-            const categoryTotals = {};
-
-            expenses.forEach(t => {
-                categoryTotals[t.categoria] = (categoryTotals[t.categoria] || 0) + t.monto;
-            });
-
-            const colors = [
-                '#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe',
-                '#43e97b', '#fa709a', '#fee140', '#30cfd0', '#a8edea'
-            ];
-
-            const ctx = document.getElementById('expenseDistributionChart').getContext('2d');
-            charts.distribution = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(categoryTotals),
-                    datasets: [{
-                        data: Object.values(categoryTotals),
-                        backgroundColor: colors,
-                        borderColor: 'white',
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'right' },
-                        datalabels: {
-                            color: 'white',
-                            font: { weight: 'bold' },
-                            formatter: (v, ctx) => {
-                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                                return ((v / total) * 100).toFixed(1) + '%';
-                            }
-                        }
-                    }
-                }
-            });
-        };
-
-        // Gráfico Clasificación de Gastos
-        const updateClassificationChart = (transactions) => {
-            if (charts.classification) charts.classification.destroy();
-
-            const expenses = transactions.filter(t => t.tipo === 'gasto');
-            const classificationTotals = {
-                necesario: 0,
-                innecesario: 0,
-                inversion: 0,
-                ahorro: 0
-            };
-
-            expenses.forEach(t => {
-                if (t.clasificacion && classificationTotals.hasOwnProperty(t.clasificacion)) {
-                    classificationTotals[t.clasificacion] += t.monto;
-                }
-            });
-
-            const ctx = document.getElementById('classificationChart').getContext('2d');
-            charts.classification = new Chart(ctx, {
-                type: 'radar',
-                data: {
-                    labels: ['Necesario', 'Innecesario', 'Inversión', 'Ahorro'],
-                    datasets: [{
-                        label: 'Gastos por Clasificación',
-                        data: [
-                            classificationTotals.necesario,
-                            classificationTotals.innecesario,
-                            classificationTotals.inversion,
-                            classificationTotals.ahorro
-                        ],
-                        borderColor: chartColors.primary,
-                        backgroundColor: 'rgba(102, 126, 234, 0.2)',
-                        borderWidth: 2,
-                        pointBackgroundColor: chartColors.primary,
-                        pointBorderColor: 'white',
-                        pointBorderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'top' },
-                        datalabels: { display: false }
-                    },
-                    scales: {
-                        r: { beginAtZero: true, ticks: { callback: v => formatCurrency(v) } }
-                    }
-                }
-            });
-        };
-
-        // Gráfico de Tendencias
-        const updateTrendChart = (transactions) => {
-            if (charts.trend) charts.trend.destroy();
-
-            const monthlyData = {};
-            transactions.forEach(t => {
-                const date = new Date(t.fecha);
-                const month = date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' });
-                if (!monthlyData[month]) {
-                    monthlyData[month] = { income: 0, expense: 0 };
-                }
-                if (t.tipo === 'ingreso') {
-                    monthlyData[month].income += t.monto;
-                } else {
-                    monthlyData[month].expense += t.monto;
-                }
-            });
-
-            const ctx = document.getElementById('trendChart').getContext('2d');
-            charts.trend = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: Object.keys(monthlyData),
-                    datasets: [
-                        {
-                            label: 'Ingresos',
-                            data: Object.values(monthlyData).map(d => d.income),
-                            borderColor: chartColors.success,
-                            backgroundColor: 'rgba(39, 174, 96, 0.1)',
-                            borderWidth: 2,
-                            tension: 0.4
-                        },
-                        {
-                            label: 'Gastos',
-                            data: Object.values(monthlyData).map(d => d.expense),
-                            borderColor: chartColors.danger,
-                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                            borderWidth: 2,
-                            tension: 0.4
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'top' },
-                        datalabels: { display: false }
-                    },
-                    scales: {
-                        y: { beginAtZero: true, ticks: { callback: v => formatCurrency(v) } }
-                    }
-                }
-            });
-        };
-
-        // Gráfico de Comparativa
-        const updateComparisonChart = (transactions) => {
-            if (charts.comparison) charts.comparison.destroy();
-
-            const expenses = transactions.filter(t => t.tipo === 'gasto');
-            const categoryData = {};
-
-            expenses.forEach(t => {
-                if (!categoryData[t.categoria]) {
-                    categoryData[t.categoria] = {
-                        necesario: 0,
-                        innecesario: 0,
-                        inversion: 0,
-                        ahorro: 0
-                    };
-                }
-                if (t.clasificacion && categoryData[t.categoria].hasOwnProperty(t.clasificacion)) {
-                    categoryData[t.categoria][t.clasificacion] += t.monto;
-                }
-            });
-
-            const categories = Object.keys(categoryData).slice(0, 6);
-
-            const ctx = document.getElementById('comparisonChart').getContext('2d');
-            charts.comparison = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: categories,
-                    datasets: [
-                        {
-                            label: 'Necesario',
-                            data: categories.map(c => categoryData[c].necesario),
-                            backgroundColor: '#27ae60'
-                        },
-                        {
-                            label: 'Innecesario',
-                            data: categories.map(c => categoryData[c].innecesario),
-                            backgroundColor: '#e74c3c'
-                        },
-                        {
-                            label: 'Inversión',
-                            data: categories.map(c => categoryData[c].inversion),
-                            backgroundColor: '#3498db'
-                        },
-                        {
-                            label: 'Ahorro',
-                            data: categories.map(c => categoryData[c].ahorro),
-                            backgroundColor: '#f39c12'
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'y',
-                    plugins: {
-                        legend: { position: 'top' },
-                        datalabels: { display: false }
-                    },
-                    scales: {
-                        x: { stacked: true, ticks: { callback: v => formatCurrency(v) } },
-                        y: { stacked: true }
-                    }
-                }
-            });
-        };
-
-        // Actualizar todos los gráficos
-        const updateAllCharts = (transactions, stats) => {
-            updateBalanceChart(transactions);
-            updateIncomeExpenseChart(transactions, stats);
-            updateExpenseDistributionChart(transactions);
-            updateClassificationChart(transactions);
-            updateTrendChart(transactions);
-            updateComparisonChart(transactions);
-        };
-
-        // Desglose por categoría
-        const updateCategoryBreakdown = (transactions) => {
-            const expenses = transactions.filter(t => t.tipo === 'gasto');
-            const categoryTotals = {};
-
-            expenses.forEach(t => {
-                categoryTotals[t.categoria] = (categoryTotals[t.categoria] || 0) + t.monto;
-            });
-
-            const sorted = Object.entries(categoryTotals)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 8);
-
-            const maxAmount = Math.max(...sorted.map(s => s[1]));
-
-            const html = sorted.map(([category, amount]) => {
-                const percentage = (amount / maxAmount) * 100;
-                return `
-                    <div class="category-item">
-                        <span class="emoji">🏷️</span>
-                        <span class="name">${category}</span>
-                        <div style="flex: 1; margin-left: 10px;">
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${percentage}%"></div>
-                            </div>
-                        </div>
-                        <span class="amount">${formatCurrency(amount)}</span>
-                    </div>
-                `;
-            }).join('');
-
-            document.getElementById('categoryBreakdown').innerHTML = html;
-        };
-
-        // Top transacciones
-        const updateTopTransactions = (transactions) => {
-            if (!transactions || transactions.length === 0) {
-                document.getElementById('topTransactionsTable').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #999;">No hay transacciones</td></tr>';
-                return;
             }
+        });
+    };
 
-            const sorted = transactions
-                .sort((a, b) => b.monto - a.monto)
-                .slice(0, 10);
+    // Clasificacion (radar) usando gastos reales
+    const updateClassificationChart = (gastosReales) => {
+        destroyChart('classification');
+        const canvasEl = document.getElementById('classificationChart');
+        if (!canvasEl) return;
 
-            const html = sorted.map(t => {
-                const date = new Date(t.fecha).toLocaleDateString('es-ES');
-                const badgeClass = t.clasificacion ? `badge ${t.clasificacion}` : '';
-                const badge = t.clasificacion ? `<span class="${badgeClass}">${t.clasificacion}</span>` : '';
-                return `
-                    <tr>
-                        <td>${date}</td>
-                        <td>${t.descripcion || 'Sin descripción'}</td>
-                        <td>${t.categoria || 'Sin categoría'}</td>
-                        <td style="font-weight: 600; color: ${t.tipo === 'ingreso' ? '#27ae60' : '#e74c3c'}">${formatCurrency(t.monto)}</td>
-                        <td>${badge}</td>
-                    </tr>
-                `;
-            }).join('');
+        const totals = { necesario: 0, innecesario: 0, inversion: 0, ahorro: 0 };
+        gastosReales.forEach(t => {
+            const cl = (t.clasificacion || '').toLowerCase();
+            if (totals.hasOwnProperty(cl)) totals[cl] += Number(t.monto) || 0;
+        });
 
-            document.getElementById('topTransactionsTable').innerHTML = html;
-        };
-
-        // Lista de deudas
-        const updateDebtsList = () => {
-            if (!allData.debts || allData.debts.length === 0) {
-                document.getElementById('deudasList').innerHTML = '<p style="color: #999; text-align: center;">No hay deudas registradas</p>';
-                return;
+        const ctx = canvasEl.getContext('2d');
+        charts.classification = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: ['Necesario', 'Innecesario', 'Inversion', 'Ahorro'],
+                datasets: [{
+                    label: 'Gastos por Clasificacion',
+                    data: [totals.necesario, totals.innecesario, totals.inversion, totals.ahorro],
+                    borderColor: chartColors.primary,
+                    backgroundColor: 'rgba(102,126,234,0.2)',
+                    borderWidth: 2,
+                    pointBackgroundColor: chartColors.primary,
+                    pointBorderColor: 'white',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' }, datalabels: { display: false } },
+                scales: { r: { beginAtZero: true, ticks: { callback: v => formatNum(v) } } }
             }
+        });
+    };
 
-            const html = allData.debts.map(debt => {
-                const percentage = debt.montoTotal > 0 ? (debt.totalAbonado / debt.montoTotal) * 100 : 0;
-                return `
-                    <div class="debt-card">
-                        <div class="desc">${debt.emoji} ${debt.descripcion}</div>
-                        <div class="amount">${formatCurrency(debt.saldoPendiente)} pendiente</div>
-                        <div style="font-size: 12px; margin-bottom: 8px;">
-                            Abonado: ${formatCurrency(debt.totalAbonado)} / Total: ${formatCurrency(debt.montoTotal)}
-                        </div>
-                        <div class="progress">
-                            <div class="progress-fill" style="width: ${percentage}%"></div>
+    // Tendencias mensuales (usa TODAS las transacciones historicas)
+    const updateTrendChart = (transactions) => {
+        destroyChart('trend');
+        const canvasEl = document.getElementById('trendChart');
+        if (!canvasEl) return;
+
+        const monthly = {};
+        transactions.forEach(t => {
+            const d = parseDate(t.fecha);
+            const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+            if (!monthly[key]) monthly[key] = { ingreso: 0, gasto: 0, ahorro: 0 };
+            const isAhorro = String(t.categoria || '').startsWith('Ahorro');
+            if (t.tipo === 'ingreso') {
+                monthly[key].ingreso += Number(t.monto) || 0;
+            } else if (isAhorro) {
+                monthly[key].ahorro += Number(t.monto) || 0;
+            } else {
+                monthly[key].gasto += Number(t.monto) || 0;
+            }
+        });
+
+        const keys = Object.keys(monthly).sort();
+        if (keys.length === 0) return;
+
+        const ctx = canvasEl.getContext('2d');
+        charts.trend = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: keys,
+                datasets: [
+                    {
+                        label: 'Ingresos',
+                        data: keys.map(k => monthly[k].ingreso),
+                        borderColor: chartColors.success,
+                        backgroundColor: 'rgba(39,174,96,0.1)',
+                        borderWidth: 2, tension: 0.4
+                    },
+                    {
+                        label: 'Gastos Reales',
+                        data: keys.map(k => monthly[k].gasto),
+                        borderColor: chartColors.danger,
+                        backgroundColor: 'rgba(231,76,60,0.1)',
+                        borderWidth: 2, tension: 0.4
+                    },
+                    {
+                        label: 'Ahorro',
+                        data: keys.map(k => monthly[k].ahorro),
+                        borderColor: chartColors.saving,
+                        backgroundColor: 'rgba(155,89,182,0.1)',
+                        borderWidth: 2, tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' }, datalabels: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { callback: v => formatNum(v) } } }
+            }
+        });
+    };
+
+    // Comparativas por categoria (gastos reales)
+    const updateComparisonChart = (gastosReales) => {
+        destroyChart('comparison');
+        const canvasEl = document.getElementById('comparisonChart');
+        if (!canvasEl) return;
+
+        const catData = {};
+        gastosReales.forEach(t => {
+            const cat = t.categoria || 'Sin Categoria';
+            if (!catData[cat]) catData[cat] = { necesario:0, innecesario:0, inversion:0, ahorro:0 };
+            const cl = (t.clasificacion || '').toLowerCase();
+            if (catData[cat].hasOwnProperty(cl)) catData[cat][cl] += Number(t.monto) || 0;
+        });
+
+        const categories = Object.keys(catData).slice(0, 8);
+        if (categories.length === 0) return;
+
+        const ctx = canvasEl.getContext('2d');
+        charts.comparison = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: categories,
+                datasets: [
+                    { label: 'Necesario',  data: categories.map(c => catData[c].necesario),  backgroundColor: '#27ae60' },
+                    { label: 'Innecesario',data: categories.map(c => catData[c].innecesario), backgroundColor: '#e74c3c' },
+                    { label: 'Inversion',  data: categories.map(c => catData[c].inversion),  backgroundColor: '#3498db' },
+                    { label: 'Ahorro',     data: categories.map(c => catData[c].ahorro),     backgroundColor: '#9b59b6' }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: { legend: { position: 'top' }, datalabels: { display: false } },
+                scales: {
+                    x: { stacked: true, ticks: { callback: v => formatNum(v) } },
+                    y: { stacked: true }
+                }
+            }
+        });
+    };
+
+    const updateAllCharts = (filtered, stats) => {
+        updateBalanceChart(filtered);
+        updateIncomeExpenseChart(stats);
+        updateExpenseDistributionChart(stats.gastosReales, stats.totalAhorro);
+        updateClassificationChart(stats.gastosReales);
+        updateTrendChart(allData.transactions); // tendencias usan TODAS las transacciones
+        updateComparisonChart(stats.gastosReales);
+    };
+
+    // ============================================================
+    // SECCIONES LISTAS
+    // ============================================================
+
+    // Desglose por categoria (gastos reales del periodo)
+    const updateCategoryBreakdown = (gastosReales) => {
+        const catTotals = {};
+        gastosReales.forEach(t => {
+            const cat = t.categoria || 'Sin Categoria';
+            catTotals[cat] = (catTotals[cat] || 0) + (Number(t.monto) || 0);
+        });
+
+        const sorted = Object.entries(catTotals).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        if (sorted.length === 0) {
+            setHTML('categoryBreakdown', '<div class="empty-state">Sin gastos en este periodo</div>');
+            return;
+        }
+
+        const maxAmt = Math.max(...sorted.map(s => s[1]));
+        const html = sorted.map(([cat, amt]) => {
+            const pct = maxAmt > 0 ? (amt / maxAmt * 100).toFixed(0) : 0;
+            return `
+                <div class="category-item">
+                    <span class="name">${cat}</span>
+                    <div style="flex:1; margin:0 10px;">
+                        <div class="progress-bar" style="margin:0;">
+                            <div class="progress-fill" style="width:${pct}%"></div>
                         </div>
                     </div>
-                `;
-            }).join('');
+                    <span class="amount">${formatNum(amt)}</span>
+                </div>`;
+        }).join('');
+        setHTML('categoryBreakdown', html);
+    };
 
-            document.getElementById('deudasList').innerHTML = html;
-        };
+    // Top transacciones (por monto, del periodo)
+    const updateTopTransactions = (transactions) => {
+        const tbody = document.getElementById('topTransactionsTable');
+        if (!tbody) return;
 
-        // Lista de presupuestos
-        const updateBudgetsList = () => {
-            if (!allData.budgets || allData.budgets.length === 0) {
-                document.getElementById('budgetsList').innerHTML = '<p style="color: #999; text-align: center;">No hay presupuestos registrados</p>';
-                return;
-            }
+        const sorted = [...transactions]
+            .sort((a, b) => (Number(b.monto)||0) - (Number(a.monto)||0))
+            .slice(0, 15);
 
-            // Calcular gasto neto mensual por categoría (replica _verificarPresupuesto de la app)
-            const ahora = new Date();
-            const txMes = allData.transactions.filter(t => {
-                const f = t.fecha instanceof Date ? t.fecha : new Date(t.fecha);
-                return f.getFullYear() === ahora.getFullYear() && f.getMonth() === ahora.getMonth();
-            });
-            const netoMes = gastoNetoPorCat(txMes);
+        if (sorted.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Sin transacciones en este periodo</td></tr>';
+            return;
+        }
 
-            const html = allData.budgets.map(budget => {
-                // limiteEfectivo según frecuencia (igual que limiteEquivalenteMensual en Dart)
-                let limiteMensual = budget.limite || 0;
-                if (budget.frecuencia === 'semanal')   limiteMensual = budget.limite * 4.33;
-                if (budget.frecuencia === 'quincenal') limiteMensual = budget.limite * 2;
+        tbody.innerHTML = sorted.map(t => {
+            const fecha   = parseDate(t.fecha).toLocaleDateString('es-CL');
+            const monto   = Number(t.monto) || 0;
+            const color   = t.tipo === 'ingreso' ? '#27ae60' : '#e74c3c';
+            const cl      = (t.clasificacion || '').toLowerCase();
+            const clBadge = cl ? `<span class="badge ${cl}">${t.clasificacion}</span>` : '';
+            const tipoCls = t.tipo === 'ingreso' ? 'ingreso' : 'gasto';
+            return `
+                <tr>
+                    <td>${fecha}</td>
+                    <td>${t.descripcion || 'Sin descripcion'}</td>
+                    <td>${t.categoria || 'Sin categoria'}</td>
+                    <td style="font-weight:600; color:${color};">${formatNum(monto)}</td>
+                    <td><span class="badge ${tipoCls}">${t.tipo || ''}</span></td>
+                    <td>${clBadge}</td>
+                </tr>`;
+        }).join('');
+    };
 
-                const gastado   = netoMes[budget.categoria] || 0;
-                const pct       = limiteMensual > 0 ? (gastado / limiteMensual) * 100 : 0;
-                const status    = pct >= 100 ? 'danger' : pct >= 80 ? 'warning' : 'success';
-                const restante  = Math.max(0, limiteMensual - gastado);
+    // Presupuestos: calcula gasto real del periodo de cada presupuesto
+    const updateBudgetsList = (allTransactions) => {
+        if (!allData.budgets || allData.budgets.length === 0) {
+            setHTML('budgetsList', '<div class="empty-state">Sin presupuestos registrados</div>');
+            return;
+        }
 
-                return `
-                    <div class="alert ${status}">
-                        <span>${budget.emoji || '📊'}</span>
-                        <div style="flex: 1;">
-                            <div style="display:flex; justify-content:space-between;">
-                                <strong>${budget.categoria}</strong>
-                                <span style="font-size:12px; color:#666;">${budget.frecuenciaLabel || budget.frecuencia}</span>
-                            </div>
-                            <div style="font-size: 12px; margin: 4px 0;">
-                                Gastado: <strong>${formatCLP(gastado)}</strong> / Límite: ${formatCLP(limiteMensual)}
-                                &nbsp;·&nbsp; Disponible: <strong>${formatCLP(restante)}</strong>
-                            </div>
-                            <div class="progress-bar" style="margin: 5px 0;">
-                                <div class="progress-fill" style="width: ${Math.min(pct, 100)}%; background: ${
-                                    status === 'danger' ? '#e74c3c' : status === 'warning' ? '#f39c12' : '#27ae60'
-                                }"></div>
-                            </div>
+        const html = allData.budgets.map(budget => {
+            const cat    = budget.categoria || '';
+            const limite = Number(budget.limite) || 0;
+            const freq   = budget.frecuencia || 'mensual';
+            const emoji  = budget.emoji || '📊';
+
+            // Gasto neto = gastos - ingresos de esa categoria en el periodo del presupuesto, clamped a 0
+            const txPeriod = filterForBudget(allTransactions, freq, cat);
+            const gastado  = txPeriod.filter(t => t.tipo === 'gasto' && !String(t.categoria||'').startsWith('Ahorro'))
+                                     .reduce((s, t) => s + (Number(t.monto)||0), 0);
+            const ingresosCat = txPeriod.filter(t => t.tipo === 'ingreso')
+                                        .reduce((s, t) => s + (Number(t.monto)||0), 0);
+            const gastadoNeto = Math.max(0, gastado - ingresosCat);
+
+            const pct       = limite > 0 ? Math.min((gastadoNeto / limite) * 100, 100) : 0;
+            const status    = pct >= 100 ? 'danger' : pct >= 80 ? 'warning' : 'success';
+            const fillColor = pct >= 100 ? '#e74c3c' : pct >= 80 ? '#f39c12' : '#27ae60';
+
+            return `
+                <div class="alert ${status}" style="margin-bottom:12px;">
+                    <span style="font-size:20px;">${emoji}</span>
+                    <div style="flex:1;">
+                        <div style="display:flex; justify-content:space-between;">
+                            <strong>${cat}</strong>
+                            <span style="font-size:12px; font-weight:600;">${freq}</span>
+                        </div>
+                        <div style="font-size:12px; margin:4px 0;">
+                            Gastado: ${formatNum(gastadoNeto)} / Limite: ${formatNum(limite)}
+                            &nbsp;<strong>${pct.toFixed(0)}%</strong>
+                        </div>
+                        <div class="progress-bar" style="margin:4px 0;">
+                            <div class="progress-fill" style="width:${pct}%; background:${fillColor};"></div>
                         </div>
                     </div>
-                `;
-            }).join('');
+                </div>`;
+        }).join('');
 
-            document.getElementById('budgetsList').innerHTML = html;
-        };
+        setHTML('budgetsList', html || '<div class="empty-state">Sin presupuestos</div>');
+    };
 
-        // Lista de metas
-        const updateGoalsList = () => {
-            if (!allData.goals || allData.goals.length === 0) {
-                document.getElementById('goalsList').innerHTML = '<p style="color: #999; text-align: center;">No hay metas registradas</p>';
-                return;
+    // Metas: montoActual / montoObjetivo
+    const updateGoalsList = () => {
+        if (!allData.goals || allData.goals.length === 0) {
+            setHTML('goalsList', '<div class="empty-state">Sin metas registradas</div>');
+            return;
+        }
+
+        const now  = new Date();
+        const html = allData.goals.map(goal => {
+            const objetivo = Number(goal.montoObjetivo) || 0;
+            const actual   = Number(goal.montoActual)   || 0;
+            const pct      = objetivo > 0 ? Math.min((actual / objetivo) * 100, 100) : 0;
+            const emoji    = goal.emoji || '🎯';
+
+            let diasRest = '';
+            if (goal.fechaLimite) {
+                const fl   = parseDate(goal.fechaLimite);
+                const diff = Math.ceil((fl - now) / (1000 * 60 * 60 * 24));
+                diasRest   = diff > 0
+                    ? `<span style="font-size:11px; color:#999;">${diff} dias restantes</span>`
+                    : `<span style="font-size:11px; color:#e74c3c;">Vencida</span>`;
             }
 
-            const html = allData.goals.map(goal => {
-                const percentage = goal.meta > 0 ? (goal.actual / goal.meta) * 100 : 0;
-                return `
-                    <div style="margin-bottom: 20px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                            <span><strong>${goal.emoji} ${goal.nombre}</strong></span>
-                            <span style="color: #667eea; font-weight: 600;">${Math.min(percentage, 100).toFixed(1)}%</span>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${Math.min(percentage, 100)}%"></div>
-                        </div>
-                        <div style="font-size: 12px; color: #999; margin-top: 5px;">
-                            ${formatCurrency(goal.actual)} / ${formatCurrency(goal.meta)}
-                        </div>
+            return `
+                <div style="margin-bottom:18px; padding:12px; background:#f8f9fa; border-radius:8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <span><strong>${emoji} ${goal.nombre || 'Meta'}</strong></span>
+                        <span style="color:#667eea; font-weight:600;">${pct.toFixed(1)}%</span>
                     </div>
-                `;
-            }).join('');
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:${pct}%;"></div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:12px; color:#999; margin-top:4px;">
+                        <span>${formatNum(actual)} / ${formatNum(objetivo)}</span>
+                        ${diasRest}
+                    </div>
+                </div>`;
+        }).join('');
 
-            document.getElementById('goalsList').innerHTML = html;
-        };
+        setHTML('goalsList', html);
+    };
 
-        // Insights
-        const updateInsights = (transactions, stats) => {
-            const expenses = transactions.filter(t => t.tipo === 'gasto');
-            const categoryTotals = {};
+    // Ahorro del periodo: transacciones con categoria que empieza con 'Ahorro'
+    const updateSavingsList = (ahorroTx) => {
+        if (ahorroTx.length === 0) {
+            setHTML('savingsList', '<div class="empty-state">Sin transacciones de ahorro en este periodo</div>');
+            return;
+        }
 
-            expenses.forEach(t => {
-                categoryTotals[t.categoria] = (categoryTotals[t.categoria] || 0) + t.monto;
-            });
+        const total = ahorroTx.reduce((s, t) => s + (Number(t.monto)||0), 0);
 
-            const insights = [];
-
-            if (stats.savingsRatio > 20) {
-                insights.push({
-                    type: 'success',
-                    text: `¡Excelente! Tu ratio de ahorro es ${stats.savingsRatio}%. Vas por buen camino.`
-                });
-            } else if (stats.savingsRatio < 0) {
-                insights.push({
-                    type: 'danger',
-                    text: `⚠️ Gastos superan ingresos en ${Math.abs(stats.savingsRatio).toFixed(2)}%. Revisa tus gastos.`
-                });
-            }
-
-            const topCategory = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0];
-            if (topCategory) {
-                insights.push({
-                    type: 'info',
-                    text: `Tu categoría con más gastos es "${topCategory[0]}" con ${formatCurrency(topCategory[1])}.`
-                });
-            }
-
-            const avgDaily = stats.totalExpense / Math.max(1, transactions.length / 30);
-            if (avgDaily > 100) {
-                insights.push({
-                    type: 'warning',
-                    text: `Tu gasto promedio diario es ${formatCurrency(avgDaily)}. Considera reducir gastos innecesarios.`
-                });
-            }
-
-            const unnecessary = expenses.filter(t => t.clasificacion === 'innecesario').reduce((sum, t) => sum + t.monto, 0);
-            if (unnecessary > stats.totalExpense * 0.2) {
-                insights.push({
-                    type: 'warning',
-                    text: `Gastos innecesarios: ${formatCurrency(unnecessary)} (${(unnecessary/stats.totalExpense*100).toFixed(1)}% del total).`
-                });
-            }
-
-            const html = insights.map(insight => `
-                <div class="alert ${insight.type}">
-                    ${insight.text}
+        const headerHtml = `
+            <div class="saving-card">
+                <div>
+                    <div style="font-size:12px; opacity:0.8;">Total ahorrado en el periodo</div>
+                    <div style="font-size:24px; font-weight:bold;">${formatNum(total)}</div>
                 </div>
-            `).join('');
+                <div style="font-size:32px;">🏦</div>
+            </div>`;
 
-            document.getElementById('insightsList').innerHTML = html || '<p style="color: #999;">No hay insights disponibles en este momento.</p>';
+        const txHtml = ahorroTx.slice(0, 8).map(t => {
+            const fecha = parseDate(t.fecha).toLocaleDateString('es-CL');
+            return `
+                <div class="suscripcion-item">
+                    <div>
+                        <div style="font-weight:600;">${t.descripcion || t.categoria || 'Ahorro'}</div>
+                        <div style="font-size:12px; color:#999;">${fecha} | ${t.categoria || ''}</div>
+                    </div>
+                    <div style="font-weight:600; color:#764ba2;">${formatNum(Number(t.monto)||0)}</div>
+                </div>`;
+        }).join('');
+
+        setHTML('savingsList', headerHtml + txHtml);
+    };
+
+    // Deudas: calcula saldoPendiente segun reglas de negocio
+    const calcSaldoDeuda = (debt) => {
+        const montoTotal  = Number(debt.montoTotal) || 0;
+        const abonos      = Array.isArray(debt.abonos)      ? debt.abonos      : [];
+        const cargos      = Array.isArray(debt.cargos)      ? debt.cargos      : [];
+        const cuotas      = Array.isArray(debt.cuotasFijas) ? debt.cuotasFijas : [];
+
+        // totalAbonado = suma de (monto - intereses) de cada abono (montoBase)
+        const totalAbonado = abonos.reduce((s, a) => {
+            const monto     = Number(a.monto) || 0;
+            const intereses = Number(a.intereses) || 0;
+            return s + (monto - intereses);
+        }, 0);
+
+        let saldo;
+        if (montoTotal === 0) {
+            // Cuenta corriente
+            const totalCargos = cargos.reduce((s, c) => s + (Number(c.monto)||0), 0);
+            saldo = totalCargos - totalAbonado;
+        } else if (cuotas.length > 0) {
+            // Credito con cuotas fijas: sumar cuotas pendientes (no pagadas)
+            const pendientes = cuotas.filter(c => !c.pagada && !c.pagado);
+            saldo = pendientes.reduce((s, c) => s + (Number(c.monto)||0), 0);
+        } else {
+            // Deuda simple
+            saldo = montoTotal - totalAbonado;
+        }
+
+        return { saldo: Math.max(0, saldo), totalAbonado, montoTotal };
+    };
+
+    const updateDebtsList = () => {
+        if (!allData.debts || allData.debts.length === 0) {
+            setHTML('deudasList', '<div class="empty-state">Sin deudas registradas</div>');
+            return;
+        }
+
+        const html = allData.debts.map(debt => {
+            const { saldo, totalAbonado, montoTotal } = calcSaldoDeuda(debt);
+            const completada = saldo <= 0;
+            const pct        = montoTotal > 0 ? Math.min((totalAbonado / montoTotal) * 100, 100) : (completada ? 100 : 0);
+            const emoji      = debt.emoji || '💳';
+            const cat        = debt.categoria || '';
+            const tipo       = debt.tipo || '';
+
+            return `
+                <div class="debt-card ${completada ? 'completada' : ''}">
+                    <div class="desc">${emoji} ${debt.descripcion || 'Deuda'}${completada ? ' (Completada)' : ''}</div>
+                    ${cat || tipo ? `<div style="font-size:12px; opacity:0.8; margin-bottom:6px;">${cat}${tipo ? ' | ' + tipo : ''}</div>` : ''}
+                    <div class="amount">${formatNum(saldo)} pendiente</div>
+                    <div style="font-size:12px; margin-bottom:8px; opacity:0.85;">
+                        Abonado: ${formatNum(totalAbonado)}${montoTotal > 0 ? ' / Total: ' + formatNum(montoTotal) : ''}
+                    </div>
+                    <div class="progress-debt">
+                        <div class="progress-debt-fill" style="width:${pct}%"></div>
+                    </div>
+                </div>`;
+        }).join('');
+
+        setHTML('deudasList', html);
+    };
+
+    // Suscripciones
+    const updateSuscripcionesList = () => {
+        if (!allData.suscripciones || allData.suscripciones.length === 0) {
+            setHTML('suscripcionesList', '<div class="empty-state">Sin suscripciones registradas</div>');
+            return;
+        }
+
+        const totalMensual = allData.suscripciones.reduce((s, sub) => {
+            return s + toMonthlyAmount(Number(sub.monto)||0, sub.frecuencia);
+        }, 0);
+
+        const headerHtml = `
+            <div style="background:#f0f0ff; border-left:4px solid #667eea; padding:12px; border-radius:8px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:600; color:#667eea;">Total mensual estimado</span>
+                <span style="font-size:18px; font-weight:bold; color:#667eea;">${formatNum(totalMensual)}</span>
+            </div>`;
+
+        const html = allData.suscripciones.map(sub => {
+            const mensual  = toMonthlyAmount(Number(sub.monto)||0, sub.frecuencia);
+            const emoji    = sub.emoji || '📱';
+            const frecLow  = (sub.frecuencia || '').toLowerCase();
+            return `
+                <div class="suscripcion-item">
+                    <div>
+                        <div style="font-weight:600;">${emoji} ${sub.descripcion || 'Suscripcion'}</div>
+                        <div style="font-size:12px; color:#999;">${sub.frecuencia || 'mensual'} | ${sub.categoria || ''}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-weight:600; color:#667eea;">${formatNum(Number(sub.monto)||0)}</div>
+                        ${frecLow !== 'mensual'
+                            ? `<div style="font-size:11px; color:#999;">~${formatNum(mensual)}/mes</div>`
+                            : ''}
+                    </div>
+                </div>`;
+        }).join('');
+
+        setHTML('suscripcionesList', headerHtml + html);
+    };
+
+    // Ingresos esperados
+    const updateIngresosEsperadosList = () => {
+        if (!allData.ingresosEsperados || allData.ingresosEsperados.length === 0) {
+            setHTML('ingresosEsperadosList', '<div class="empty-state">Sin ingresos esperados registrados</div>');
+            return;
+        }
+
+        const renderItem = (ie) => {
+            const fecha    = ie.fechaEsperada ? parseDate(ie.fechaEsperada).toLocaleDateString('es-CL') : 'Sin fecha';
+            const emoji    = ie.emoji || '💰';
+            const recibido = !!ie.recibido;
+            return `
+                <div class="ingreso-esp-item" style="${recibido ? 'opacity:0.6;' : ''}">
+                    <div>
+                        <div style="font-weight:600;">${emoji} ${ie.descripcion || 'Ingreso esperado'}</div>
+                        <div style="font-size:12px; color:#999;">${fecha}${ie.categoria ? ' | ' + ie.categoria : ''}${ie.frecuencia ? ' | ' + ie.frecuencia : ''}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-weight:600; color:#27ae60;">${formatNum(Number(ie.monto)||0)}</div>
+                        ${recibido
+                            ? '<div style="font-size:11px; color:#27ae60;">Recibido</div>'
+                            : '<div style="font-size:11px; color:#f39c12;">Pendiente</div>'}
+                    </div>
+                </div>`;
         };
 
-        // Event listeners
-        document.querySelectorAll('.period-btn:not(#logoutBtn)').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                if (e.target.id === 'logoutBtn') return;
-                document.querySelectorAll('.period-btn:not(#logoutBtn)').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                currentPeriod = e.target.dataset.period;
+        const pendientes = allData.ingresosEsperados.filter(ie => !ie.recibido);
+        const recibidos  = allData.ingresosEsperados.filter(ie =>  ie.recibido);
 
-                const periodLabels = {
-                    day: 'Hoy',
-                    week: 'Esta Semana',
-                    month: 'Este Mes',
-                    year: 'Este Año',
-                    all: 'Todo'
-                };
+        let html = '';
+        if (pendientes.length > 0) {
+            html += `<div style="font-weight:600; color:#27ae60; margin-bottom:8px;">Pendientes (${pendientes.length})</div>`;
+            html += pendientes.map(renderItem).join('');
+        }
+        if (recibidos.length > 0) {
+            html += `<div style="font-weight:600; color:#999; margin:12px 0 8px;">Recibidos</div>`;
+            html += recibidos.slice(0, 5).map(renderItem).join('');
+        }
 
-                const periodDisplay = document.getElementById('periodDisplay');
-                if (periodDisplay) {
-                    periodDisplay.textContent = periodLabels[currentPeriod];
-                }
-                updateDashboard();
-            });
+        setHTML('ingresosEsperadosList', html || '<div class="empty-state">Sin datos</div>');
+    };
+
+    // Insights basados en ratios reales
+    const updateInsights = (transactions, stats) => {
+        const insights = [];
+        const ratioNum = parseFloat(stats.ratioAhorro);
+
+        if (ratioNum >= 20) {
+            insights.push({ type: 'success', text: `Excelente! Tu ratio de ahorro es ${stats.ratioAhorro}%. Vas por buen camino.` });
+        } else if (ratioNum < 0) {
+            insights.push({ type: 'danger', text: `Atencion: Tus gastos reales superan tus ingresos en ${Math.abs(ratioNum).toFixed(1)}%. Revisa tus gastos.` });
+        } else if (ratioNum < 10) {
+            insights.push({ type: 'warning', text: `Tu ratio de ahorro es bajo (${stats.ratioAhorro}%). Intenta reducir gastos innecesarios.` });
+        } else {
+            insights.push({ type: 'info', text: `Tu ratio de ahorro es ${stats.ratioAhorro}%. Buen trabajo.` });
+        }
+
+        // Categoria mas costosa
+        const catTotals = {};
+        stats.gastosReales.forEach(t => {
+            const cat = t.categoria || 'Sin Categoria';
+            catTotals[cat] = (catTotals[cat] || 0) + (Number(t.monto)||0);
         });
+        const topCat = Object.entries(catTotals).sort((a, b) => b[1] - a[1])[0];
+        if (topCat) {
+            insights.push({ type: 'info', text: `Categoria con mayor gasto: "${topCat[0]}" con ${formatNum(topCat[1])}.` });
+        }
 
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-                e.target.classList.add('active');
-                document.getElementById(e.target.dataset.tab).classList.add('active');
-            });
-        });
+        // Gastos innecesarios
+        const innecesario = stats.gastosReales
+            .filter(t => (t.clasificacion || '').toLowerCase() === 'innecesario')
+            .reduce((s, t) => s + (Number(t.monto)||0), 0);
+        if (innecesario > 0 && stats.totalGastosReales > 0) {
+            const pct  = (innecesario / stats.totalGastosReales * 100).toFixed(1);
+            const type = parseFloat(pct) > 30 ? 'warning' : 'info';
+            insights.push({ type, text: `Gastos innecesarios: ${formatNum(innecesario)} (${pct}% del total de gastos reales).` });
+        }
 
-        // Inicializar Firebase y dashboard
-        Chart.register(ChartDataLabels);
-
-        const firebaseConfig = {
-            apiKey: 'AIzaSyDKA5h45fH297LNZoXYGE_iQAD-MeVmysA',
-            appId: '1:462918893496:web:81465c80ecb526faf7994d',
-            messagingSenderId: '462918893496',
-            projectId: 'finanzass-nexus',
-            authDomain: 'finanzass-nexus.firebaseapp.com',
-            storageBucket: 'finanzass-nexus.firebasestorage.app',
-        };
-
-        // Inicializar Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-
-        const loginModal = document.getElementById('loginModal');
-        const loginEmail = document.getElementById('loginEmail');
-        const loginPassword = document.getElementById('loginPassword');
-        const loginBtn = document.getElementById('loginBtn');
-        const googleLoginBtn = document.getElementById('googleLoginBtn');
-
-        // Función para cargar datos del usuario
-        async function cargarDatosUsuario(user) {
-            console.log('✅ Usuario autenticado:', user.email);
-
-            try {
-                // Cargar transacciones
-                const txSnapshot = await db
-                    .collection('usuarios')
-                    .doc(user.uid)
-                    .collection('transacciones')
-                    .orderBy('fecha', 'desc')
-                    .get();
-
-                const transacciones = txSnapshot.docs.map(doc => {
-                    const data = doc.data();
-                    return {
-                        id: doc.id,
-                        ...data,
-                        fecha: data.fecha?.toDate ? data.fecha.toDate() : new Date(data.fecha)
-                    };
-                });
-
-                console.log('✅ Transacciones cargadas:', transacciones.length);
-
-                // Cargar metas
-                const metasSnapshot = await db
-                    .collection('usuarios')
-                    .doc(user.uid)
-                    .collection('metas')
-                    .get();
-                const metas = metasSnapshot.docs.map(doc => {
-                    const d = doc.data();
-                    return {
-                        id: doc.id,
-                        nombre: d.nombre || 'Sin nombre',
-                        meta: d.montoObjetivo || d.meta || 0,
-                        actual: d.montoActual || d.actual || 0,
-                        emoji: d.emoji || '🎯'
-                    };
-                });
-
-                console.log('✅ Metas cargadas:', metas.length);
-
-                // Cargar presupuestos
-                const presupuestosSnapshot = await db
-                    .collection('usuarios')
-                    .doc(user.uid)
-                    .collection('presupuestos')
-                    .get();
-                const presupuestos = presupuestosSnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                    emoji: '📊'
-                }));
-
-                console.log('✅ Presupuestos cargados:', presupuestos.length);
-
-                // Cargar deudas
-                const deudasSnapshot = await db
-                    .collection('usuarios')
-                    .doc(user.uid)
-                    .collection('deudas')
-                    .get();
-                const deudas = deudasSnapshot.docs.map(doc => {
-                    const data = doc.data();
-                    return {
-                        id: doc.id,
-                        descripcion: data.descripcion,
-                        montoTotal: data.montoTotal,
-                        totalAbonado: data.totalAbonado || 0,
-                        saldoPendiente: (data.montoTotal - (data.totalAbonado || 0)),
-                        emoji: '💳',
-                        categoria: data.categoria || 'Deuda',
-                        tipo: 'gasto'
-                    };
-                });
-
-                console.log('✅ Deudas cargadas:', deudas.length);
-
-                // Reemplazar datos globales
-                allData = {
-                    transactions: transacciones,
-                    debts: deudas,
-                    budgets: presupuestos,
-                    goals: metas
-                };
-
-                console.log('✅ Dashboard actualizado con datos reales');
-
-                // Ocultar login y mostrar dashboard
-                loginModal.style.display = 'none';
-                document.querySelector('.container').style.display = 'block';
-
-                updateDashboard();
-
-            } catch (error) {
-                console.error('❌ Error cargando datos:', error.message);
-                // Mostrar dashboard vacío en vez de un alert
-                updateDashboard();
+        // Progreso en metas
+        if (allData.goals && allData.goals.length > 0) {
+            const totalObj  = allData.goals.reduce((s, g) => s + (Number(g.montoObjetivo)||0), 0);
+            const totalAct  = allData.goals.reduce((s, g) => s + (Number(g.montoActual)||0), 0);
+            if (totalObj > 0) {
+                const pct = (totalAct / totalObj * 100).toFixed(1);
+                insights.push({ type: 'info', text: `Progreso global en metas: ${pct}% (${formatNum(totalAct)} de ${formatNum(totalObj)}).` });
             }
         }
 
-        // Login con email/password
-        loginBtn.addEventListener('click', async () => {
-            const email = loginEmail.value.trim();
-            const password = loginPassword.value.trim();
-
-            if (!email || !password) {
-                alert('Por favor completa email y contraseña');
-                return;
+        // Suscripciones
+        if (allData.suscripciones && allData.suscripciones.length > 0) {
+            const totalSubs = allData.suscripciones.reduce((s, sub) => {
+                return s + toMonthlyAmount(Number(sub.monto)||0, sub.frecuencia);
+            }, 0);
+            if (totalSubs > 0 && stats.totalIngresos > 0) {
+                const pct  = (totalSubs / stats.totalIngresos * 100).toFixed(1);
+                const type = parseFloat(pct) > 20 ? 'warning' : 'info';
+                insights.push({ type, text: `Tus suscripciones suman ~${formatNum(totalSubs)}/mes (${pct}% de tus ingresos).` });
             }
+        }
 
-            try {
-                loginBtn.disabled = true;
-                loginBtn.textContent = 'Ingresando...';
+        if (insights.length === 0) {
+            setHTML('insightsList', '<div class="empty-state">Sin insights disponibles. Agrega mas transacciones.</div>');
+            return;
+        }
 
-                const result = await auth.signInWithEmailAndPassword(email, password);
-                console.log('✅ Login exitoso');
+        setHTML('insightsList', insights.map(i =>
+            `<div class="alert ${i.type}"><div>${i.text}</div></div>`
+        ).join(''));
+    };
 
-            } catch (error) {
-                console.error('❌ Error de login:', error.message);
+    // ============================================================
+    // FIREBASE CONFIG E INICIALIZACION
+    // ============================================================
+    Chart.register(ChartDataLabels);
 
-                // Si no existe, crear cuenta
-                if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-                    try {
-                        await auth.createUserWithEmailAndPassword(email, password);
-                        console.log('✅ Cuenta creada');
-                    } catch (createError) {
-                        alert('Error: ' + createError.message);
-                    }
-                } else {
-                    alert('Error de login: ' + error.message);
+    const firebaseConfig = {
+        apiKey: 'AIzaSyDKA5h45fH297LNZoXYGE_iQAD-MeVmysA',
+        appId: '1:462918893496:web:81465c80ecb526faf7994d',
+        messagingSenderId: '462918893496',
+        projectId: 'finanzass-nexus',
+        authDomain: 'finanzass-nexus.firebaseapp.com',
+        storageBucket: 'finanzass-nexus.firebasestorage.app'
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db   = firebase.firestore();
+    const auth = firebase.auth();
+
+    // ============================================================
+    // CARGA DE DATOS DESDE FIRESTORE
+    // ============================================================
+    async function cargarDatosUsuario(user) {
+        console.log('Usuario autenticado:', user.email);
+
+        try {
+            const userRef = db.collection('usuarios').doc(user.uid);
+
+            // Cargar todas las colecciones en paralelo
+            const [txSnap, metasSnap, presupSnap, deudasSnap, subsSnap, ingEspSnap] = await Promise.all([
+                userRef.collection('transacciones').orderBy('fecha', 'desc').get(),
+                userRef.collection('metas').get(),
+                userRef.collection('presupuestos').get(),
+                userRef.collection('deudas').get(),
+                userRef.collection('suscripciones').get(),
+                userRef.collection('ingresos_esperados').orderBy('fechaEsperada').get()
+                    .catch(() => userRef.collection('ingresos_esperados').get())
+            ]);
+
+            // Transacciones
+            const transacciones = txSnap.docs.map(doc => {
+                const d = doc.data();
+                return {
+                    id: doc.id,
+                    descripcion:  d.descripcion  || '',
+                    monto:        Number(d.monto) || 0,
+                    tipo:         d.tipo          || 'gasto',
+                    categoria:    d.categoria     || 'Sin Categoria',
+                    subcategoria: d.subcategoria  || '',
+                    emoji:        d.emoji         || '',
+                    clasificacion:d.clasificacion || '',
+                    fecha:        parseDate(d.fecha)
+                };
+            });
+            console.log('Transacciones:', transacciones.length);
+
+            // Metas
+            const metas = metasSnap.docs.map(doc => {
+                const d = doc.data();
+                return {
+                    id:            doc.id,
+                    nombre:        d.nombre        || 'Meta',
+                    montoObjetivo: Number(d.montoObjetivo) || Number(d.meta) || 0,
+                    montoActual:   Number(d.montoActual)   || Number(d.actual) || 0,
+                    fechaLimite:   d.fechaLimite    || null,
+                    emoji:         d.emoji          || '🎯',
+                    color:         d.color          || ''
+                };
+            });
+            console.log('Metas:', metas.length);
+
+            // Presupuestos
+            const presupuestos = presupSnap.docs.map(doc => {
+                const d = doc.data();
+                return {
+                    id:        doc.id,
+                    categoria: d.categoria  || '',
+                    limite:    Number(d.limite) || 0,
+                    frecuencia:d.frecuencia || 'mensual',
+                    emoji:     d.emoji      || '📊'
+                };
+            });
+            console.log('Presupuestos:', presupuestos.length);
+
+            // Deudas
+            const deudas = deudasSnap.docs.map(doc => {
+                const d = doc.data();
+                return {
+                    id:           doc.id,
+                    descripcion:  d.descripcion   || 'Deuda',
+                    montoTotal:   Number(d.montoTotal) || 0,
+                    tipo:         d.tipo           || '',
+                    categoria:    d.categoria      || '',
+                    subcategoria: d.subcategoria   || '',
+                    emoji:        d.emoji          || '💳',
+                    fecha:        d.fecha ? parseDate(d.fecha) : null,
+                    clasificacion:d.clasificacion  || '',
+                    cuotasFijas:  Array.isArray(d.cuotasFijas) ? d.cuotasFijas : [],
+                    abonos:       Array.isArray(d.abonos)      ? d.abonos      : [],
+                    cargos:       Array.isArray(d.cargos)      ? d.cargos      : []
+                };
+            });
+            console.log('Deudas:', deudas.length);
+
+            // Suscripciones
+            const suscripciones = subsSnap.docs.map(doc => {
+                const d = doc.data();
+                return {
+                    id:          doc.id,
+                    descripcion: d.descripcion || 'Suscripcion',
+                    monto:       Number(d.monto) || 0,
+                    frecuencia:  d.frecuencia   || 'mensual',
+                    fechaInicio: d.fechaInicio ? parseDate(d.fechaInicio) : null,
+                    emoji:       d.emoji        || '📱',
+                    categoria:   d.categoria    || ''
+                };
+            });
+            console.log('Suscripciones:', suscripciones.length);
+
+            // Ingresos esperados
+            const ingresosEsperados = ingEspSnap.docs.map(doc => {
+                const d = doc.data();
+                return {
+                    id:           doc.id,
+                    descripcion:  d.descripcion  || 'Ingreso esperado',
+                    monto:        Number(d.monto) || 0,
+                    frecuencia:   d.frecuencia   || '',
+                    fechaEsperada:d.fechaEsperada ? parseDate(d.fechaEsperada) : null,
+                    emoji:        d.emoji        || '💰',
+                    categoria:    d.categoria    || '',
+                    recibido:     !!d.recibido
+                };
+            });
+            console.log('Ingresos esperados:', ingresosEsperados.length);
+
+            // Actualizar estado global
+            allData = { transactions: transacciones, debts: deudas, budgets: presupuestos, goals: metas, suscripciones, ingresosEsperados };
+
+            // Mostrar dashboard
+            const modal     = document.getElementById('loginModal');
+            const container = document.querySelector('.container');
+            if (modal)     modal.style.display     = 'none';
+            if (container) container.style.display = 'block';
+
+            updateDashboard();
+
+        } catch (error) {
+            console.error('Error cargando datos:', error);
+            const container = document.querySelector('.container');
+            if (container) container.style.display = 'block';
+            updateDashboard();
+        }
+    }
+
+    // ============================================================
+    // LOGIN / LOGOUT
+    // ============================================================
+    const showLoginError = (msg) => {
+        const el = document.getElementById('loginError');
+        if (el) { el.textContent = msg; el.style.display = 'block'; }
+    };
+    const hideLoginError = () => {
+        const el = document.getElementById('loginError');
+        if (el) el.style.display = 'none';
+    };
+
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+        const emailEl = document.getElementById('loginEmail');
+        const passEl  = document.getElementById('loginPassword');
+        const btn     = document.getElementById('loginBtn');
+        const email   = emailEl ? emailEl.value.trim()  : '';
+        const pass    = passEl  ? passEl.value.trim()   : '';
+
+        hideLoginError();
+        if (!email || !pass) {
+            showLoginError('Por favor completa email y contrasena');
+            return;
+        }
+
+        btn.disabled    = true;
+        btn.textContent = 'Ingresando...';
+
+        try {
+            await auth.signInWithEmailAndPassword(email, pass);
+        } catch (error) {
+            console.error('Error de login:', error.message);
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+                try {
+                    await auth.createUserWithEmailAndPassword(email, pass);
+                } catch (createErr) {
+                    showLoginError('Error: ' + createErr.message);
                 }
-            } finally {
-                loginBtn.disabled = false;
-                loginBtn.textContent = 'Ingresar';
-            }
-        });
-
-        // Login con Google
-        googleLoginBtn.addEventListener('click', async () => {
-            try {
-                googleLoginBtn.disabled = true;
-                googleLoginBtn.textContent = 'Conectando...';
-
-                const provider = new firebase.auth.GoogleAuthProvider();
-                await auth.signInWithPopup(provider);
-                console.log('✅ Login con Google exitoso');
-
-            } catch (error) {
-                console.error('❌ Error Google login:', error.message);
-                alert('Error: ' + error.message);
-            } finally {
-                googleLoginBtn.disabled = false;
-                googleLoginBtn.textContent = '📱 Login con Google';
-            }
-        });
-
-        // Botón de logout
-        document.getElementById('logoutBtn').addEventListener('click', async () => {
-            try {
-                await auth.signOut();
-                console.log('✅ Sesión cerrada');
-            } catch (error) {
-                console.error('Error al cerrar sesión:', error);
-            }
-        });
-
-        // Escuchar cambios de autenticación
-        auth.onAuthStateChanged(async (user) => {
-            if (user) {
-                // Usuario autenticado, cargar datos
-                loginModal.style.display = 'none';
-                document.querySelector('.container').style.display = 'block';
-                document.getElementById('userEmail').textContent = '👤 ' + user.email;
-                await cargarDatosUsuario(user);
             } else {
-                // Sin usuario, mostrar login
-                loginModal.style.display = 'flex';
-                document.querySelector('.container').style.display = 'none';
-                console.log('⚠️ Usuario no autenticado');
+                showLoginError('Error de login: ' + error.message);
             }
+        } finally {
+            btn.disabled    = false;
+            btn.textContent = 'Ingresar';
+        }
+    });
+
+    document.getElementById('googleLoginBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('googleLoginBtn');
+        btn.disabled    = true;
+        btn.textContent = 'Conectando...';
+        hideLoginError();
+        try {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            await auth.signInWithPopup(provider);
+        } catch (error) {
+            console.error('Error Google login:', error.message);
+            showLoginError('Error Google: ' + error.message);
+        } finally {
+            btn.disabled    = false;
+            btn.textContent = 'Login con Google';
+        }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        try { await auth.signOut(); }
+        catch (e) { console.error('Error al cerrar sesion:', e); }
+    });
+
+    // ============================================================
+    // PERIOD BUTTONS & TABS
+    // ============================================================
+    const periodLabels = {
+        day: 'Hoy', week: 'Esta Semana',
+        month: 'Este Mes', year: 'Este Ano', all: 'Todo'
+    };
+
+    document.querySelectorAll('.period-btn[data-period]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.period-btn[data-period]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentPeriod = btn.dataset.period;
+            setText('periodDisplay', periodLabels[currentPeriod] || currentPeriod);
+            updateDashboard();
         });
+    });
+
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            const target = document.getElementById(tab.dataset.tab);
+            if (target) target.classList.add('active');
+        });
+    });
+
+    // ============================================================
+    // AUTH STATE
+    // ============================================================
+    auth.onAuthStateChanged(async (user) => {
+        const modal     = document.getElementById('loginModal');
+        const container = document.querySelector('.container');
+        if (user) {
+            if (modal)     modal.style.display     = 'none';
+            if (container) container.style.display = 'block';
+            setText('userEmail', user.email);
+            await cargarDatosUsuario(user);
+        } else {
+            if (modal)     modal.style.display     = 'flex';
+            if (container) container.style.display = 'none';
+        }
+    });
     </script>
 </body>
 </html>

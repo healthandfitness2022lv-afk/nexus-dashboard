@@ -483,8 +483,12 @@
                     <div class="info-value positive" id="totalIncome">$0</div>
                 </div>
                 <div class="info-box">
-                    <div class="info-label">Total Gastos</div>
+                    <div class="info-label">Gastos Reales</div>
                     <div class="info-value negative" id="totalExpenses">$0</div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label">🎯 Ahorrado</div>
+                    <div class="info-value neutral" id="totalAhorro">$0</div>
                 </div>
                 <div class="info-box">
                     <div class="info-label">Balance</div>
@@ -492,9 +496,9 @@
                 </div>
             </div>
             <div class="period-selector">
-                <button class="period-btn active" data-period="day">Hoy</button>
+                <button class="period-btn" data-period="day">Hoy</button>
                 <button class="period-btn" data-period="week">Esta Semana</button>
-                <button class="period-btn" data-period="month">Este Mes</button>
+                <button class="period-btn active" data-period="month">Este Mes</button>
                 <button class="period-btn" data-period="year">Este Año</button>
                 <button class="period-btn" data-period="all">Todo</button>
                 <button id="logoutBtn" style="padding: 8px 16px; border: 2px solid #e74c3c; background: white; color: #e74c3c; border-radius: 8px; cursor: pointer; font-weight: 500; margin-left: auto;">🚪 Logout</button>
@@ -752,62 +756,102 @@
         };
 
         let allData = generateMockData();
-        let currentPeriod = 'day';
+        let currentPeriod = 'month';
 
-        // Filtrar datos por período
+        // ── Formato CLP idéntico a la app Flutter ──────────────────────────
+        const formatCLP = (v) => {
+            const n = Math.round(Math.abs(v));
+            const s = n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            return v < 0 ? `-$${s}` : `$${s}`;
+        };
+
+        // ── Helpers de lógica (replica transaction_helpers.dart) ───────────
+        const esAhorro    = t => t.tipo === 'gasto' && (t.categoria || '').startsWith('Ahorro');
+        const esGastoReal = t => t.tipo === 'gasto' && !esAhorro(t);
+
+        const totalIngresos   = lista => lista.filter(t => t.tipo === 'ingreso').reduce((s, t) => s + t.monto, 0);
+        const totalAhorro     = lista => lista.filter(esAhorro).reduce((s, t) => s + t.monto, 0);
+        const totalGastosReal = lista => lista.filter(esGastoReal).reduce((s, t) => s + t.monto, 0);
+
+        // Gastos por categoría (incluye ahorro, para gráfico de distribución)
+        const gastosPorCat = lista => {
+            const map = {};
+            lista.filter(t => t.tipo === 'gasto').forEach(t => {
+                map[t.categoria] = (map[t.categoria] || 0) + t.monto;
+            });
+            return map;
+        };
+
+        // Gasto neto por categoría para presupuestos (gastos − ingresos de esa cat, clamp ≥ 0)
+        const gastoNetoPorCat = lista => {
+            const map = {};
+            lista.forEach(t => {
+                if (t.tipo === 'gasto') map[t.categoria] = (map[t.categoria] || 0) + t.monto;
+                else if (t.tipo === 'ingreso') map[t.categoria] = (map[t.categoria] || 0) - t.monto;
+            });
+            Object.keys(map).forEach(k => { if (map[k] <= 0) delete map[k]; });
+            return map;
+        };
+
+        // ── Filtrar por período (igual que FiltroPeriodo de la app) ─────────
         const filterDataByPeriod = (period) => {
-            const today = new Date();
-            let startDate = new Date();
+            const hoy = new Date();
+            let start = new Date();
 
-            switch(period) {
+            switch (period) {
                 case 'day':
-                    startDate.setHours(0, 0, 0, 0);
+                    start = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
                     break;
-                case 'week':
-                    startDate.setDate(today.getDate() - today.getDay());
+                case 'week': {
+                    const dow = hoy.getDay() === 0 ? 6 : hoy.getDay() - 1; // lunes=0
+                    start = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - dow);
                     break;
+                }
                 case 'month':
-                    startDate.setDate(1);
+                    start = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
                     break;
                 case 'year':
-                    startDate.setMonth(0, 1);
+                    start = new Date(hoy.getFullYear(), 0, 1);
                     break;
                 case 'all':
-                    startDate = new Date(0);
+                    start = new Date(0);
                     break;
             }
 
-            return allData.transactions.filter(t => new Date(t.fecha) >= startDate);
+            return allData.transactions.filter(t => {
+                const f = t.fecha instanceof Date ? t.fecha : new Date(t.fecha);
+                return f >= start;
+            });
         };
 
-        // Calcular estadísticas
+        // ── Calcular estadísticas ─────────────────────────────────────────
         const calculateStats = (transactions) => {
-            const income = transactions.filter(t => t.tipo === 'ingreso');
-            const expenses = transactions.filter(t => t.tipo === 'gasto');
+            const ingresos  = transactions.filter(t => t.tipo === 'ingreso');
+            const gastos    = transactions.filter(t => t.tipo === 'gasto' && !esAhorro(t));
+            const ahorros   = transactions.filter(esAhorro);
 
-            const totalIncome = income.reduce((sum, t) => sum + t.monto, 0);
-            const totalExpense = expenses.reduce((sum, t) => sum + t.monto, 0);
+            const totIng  = totalIngresos(transactions);
+            const totGas  = totalGastosReal(transactions);
+            const totAho  = totalAhorro(transactions);
+            // Balance = ingresos − gastos reales − ahorro (igual que la app)
+            const balance = totIng - totGas - totAho;
 
             return {
-                totalIncome,
-                totalExpense,
-                balance: totalIncome - totalExpense,
-                avgIncome: income.length > 0 ? totalIncome / income.length : 0,
-                avgExpense: expenses.length > 0 ? totalExpense / expenses.length : 0,
-                maxIncome: income.length > 0 ? Math.max(...income.map(t => t.monto)) : 0,
-                maxExpense: expenses.length > 0 ? Math.max(...expenses.map(t => t.monto)) : 0,
+                totalIncome:       totIng,
+                totalExpense:      totGas,
+                totalAhorro:       totAho,
+                balance,
+                avgIncome:         ingresos.length > 0 ? totIng / ingresos.length : 0,
+                avgExpense:        gastos.length   > 0 ? totGas / gastos.length   : 0,
+                maxIncome:         ingresos.length > 0 ? Math.max(...ingresos.map(t => t.monto)) : 0,
+                maxExpense:        gastos.length   > 0 ? Math.max(...gastos.map(t => t.monto))   : 0,
                 totalTransactions: transactions.length,
-                savingsRatio: totalIncome > 0 ? ((totalIncome - totalExpense) / totalIncome * 100).toFixed(2) : 0
+                savingsRatio:      totIng > 0 ? ((totAho / totIng) * 100).toFixed(1) : 0,
             };
         };
 
-        // Formatear moneda
-        const formatCurrency = (amount) => {
-            return new Intl.NumberFormat('es-ES', {
-                style: 'currency',
-                currency: 'USD'
-            }).format(amount);
-        };
+        // Alias para que el resto del código que usa formatCurrency siga funcionando
+        const formatCurrency = formatCLP;
 
         // Helper seguro para setear texto
         const setText = (id, value) => {
@@ -820,23 +864,27 @@
             const filtered = filterDataByPeriod(currentPeriod);
             const stats = calculateStats(filtered);
 
-            // Actualizar header
-            setText('totalIncome', formatCurrency(stats.totalIncome));
-            setText('totalExpenses', formatCurrency(stats.totalExpense));
+            // Header
+            setText('totalIncome',    formatCLP(stats.totalIncome));
+            setText('totalExpenses',  formatCLP(stats.totalExpense));
             const balanceEl = document.getElementById('totalBalance');
             if (balanceEl) {
                 balanceEl.className = 'info-value ' + (stats.balance >= 0 ? 'positive' : 'negative');
-                balanceEl.textContent = formatCurrency(stats.balance);
+                balanceEl.textContent = formatCLP(stats.balance);
             }
 
-            // Actualizar métricas
-            setText('avgExpense', formatCurrency(stats.avgExpense));
-            setText('avgIncome', formatCurrency(stats.avgIncome));
-            setText('maxExpense', formatCurrency(stats.maxExpense));
-            setText('maxIncome', formatCurrency(stats.maxIncome));
-            setText('totalTransactions', stats.totalTransactions);
-            setText('savingsRatio', stats.savingsRatio + '%');
-            setText('lastUpdate', new Date().toLocaleString('es-ES'));
+            // Métricas
+            setText('avgExpense',         formatCLP(stats.avgExpense));
+            setText('avgIncome',          formatCLP(stats.avgIncome));
+            setText('maxExpense',         formatCLP(stats.maxExpense));
+            setText('maxIncome',          formatCLP(stats.maxIncome));
+            setText('totalTransactions',  stats.totalTransactions);
+            setText('savingsRatio',       stats.savingsRatio + '%');
+            setText('lastUpdate',         new Date().toLocaleString('es-ES'));
+
+            // Ahorro del período
+            const ahorroEl = document.getElementById('totalAhorro');
+            if (ahorroEl) ahorroEl.textContent = formatCLP(stats.totalAhorro);
 
             // Actualizar gráficos
             updateAllCharts(filtered, stats);
@@ -1262,20 +1310,39 @@
                 return;
             }
 
+            // Calcular gasto neto mensual por categoría (replica _verificarPresupuesto de la app)
+            const ahora = new Date();
+            const txMes = allData.transactions.filter(t => {
+                const f = t.fecha instanceof Date ? t.fecha : new Date(t.fecha);
+                return f.getFullYear() === ahora.getFullYear() && f.getMonth() === ahora.getMonth();
+            });
+            const netoMes = gastoNetoPorCat(txMes);
+
             const html = allData.budgets.map(budget => {
-                const gastado = budget.gastado || 0;
-                const percentage = (gastado / budget.limite) * 100;
-                const status = percentage >= 100 ? 'danger' : percentage >= 80 ? 'warning' : 'success';
+                // limiteEfectivo según frecuencia (igual que limiteEquivalenteMensual en Dart)
+                let limiteMensual = budget.limite || 0;
+                if (budget.frecuencia === 'semanal')   limiteMensual = budget.limite * 4.33;
+                if (budget.frecuencia === 'quincenal') limiteMensual = budget.limite * 2;
+
+                const gastado   = netoMes[budget.categoria] || 0;
+                const pct       = limiteMensual > 0 ? (gastado / limiteMensual) * 100 : 0;
+                const status    = pct >= 100 ? 'danger' : pct >= 80 ? 'warning' : 'success';
+                const restante  = Math.max(0, limiteMensual - gastado);
+
                 return `
                     <div class="alert ${status}">
                         <span>${budget.emoji || '📊'}</span>
                         <div style="flex: 1;">
-                            <div><strong>${budget.categoria}</strong> - ${budget.frecuencia}</div>
-                            <div style="font-size: 12px; margin: 5px 0;">
-                                Gastado: ${formatCurrency(gastado)} / Límite: ${formatCurrency(budget.limite)}
+                            <div style="display:flex; justify-content:space-between;">
+                                <strong>${budget.categoria}</strong>
+                                <span style="font-size:12px; color:#666;">${budget.frecuenciaLabel || budget.frecuencia}</span>
+                            </div>
+                            <div style="font-size: 12px; margin: 4px 0;">
+                                Gastado: <strong>${formatCLP(gastado)}</strong> / Límite: ${formatCLP(limiteMensual)}
+                                &nbsp;·&nbsp; Disponible: <strong>${formatCLP(restante)}</strong>
                             </div>
                             <div class="progress-bar" style="margin: 5px 0;">
-                                <div class="progress-fill" style="width: ${Math.min(percentage, 100)}%; background: ${
+                                <div class="progress-fill" style="width: ${Math.min(pct, 100)}%; background: ${
                                     status === 'danger' ? '#e74c3c' : status === 'warning' ? '#f39c12' : '#27ae60'
                                 }"></div>
                             </div>

@@ -1,0 +1,211 @@
+{
+  "dashboard": {
+    "titulo": "NEXUS Finanzas",
+    "subtitulo": "Dashboard Analítico Detallado",
+    "version": "1.0.0",
+    "descripcion": "Herramienta profesional de análisis financiero con gráficos interactivos y estadísticas avanzadas"
+  },
+  "colores": {
+    "primario": "#667eea",
+    "secundario": "#764ba2",
+    "exito": "#27ae60",
+    "peligro": "#e74c3c",
+    "advertencia": "#f39c12",
+    "info": "#3498db",
+    "claro": "#ecf0f1",
+    "oscuro": "#2c3e50",
+    "gradiente": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+  },
+  "gráficos": {
+    "habilitados": {
+      "balanceChart": true,
+      "incomeExpenseChart": true,
+      "expenseDistributionChart": true,
+      "classificationChart": true,
+      "trendChart": true,
+      "comparisonChart": true
+    },
+    "opciones": {
+      "mostrarEtiquetas": true,
+      "mostrarLeyenda": true,
+      "animacion": true,
+      "duracionAnimacion": 750
+    }
+  },
+  "períodos": [
+    {
+      "id": "day",
+      "etiqueta": "Hoy",
+      "icono": "📅"
+    },
+    {
+      "id": "week",
+      "etiqueta": "Esta Semana",
+      "icono": "📊"
+    },
+    {
+      "id": "month",
+      "etiqueta": "Este Mes",
+      "icono": "📈"
+    },
+    {
+      "id": "year",
+      "etiqueta": "Este Año",
+      "icono": "📉"
+    },
+    {
+      "id": "all",
+      "etiqueta": "Todo",
+      "icono": "🗓️"
+    }
+  ],
+  "clasificacionesGasto": [
+    {
+      "id": "necesario",
+      "etiqueta": "Necesario",
+      "emoji": "✅",
+      "color": "#27ae60",
+      "descripcion": "Gastos esenciales para vivir"
+    },
+    {
+      "id": "innecesario",
+      "etiqueta": "Innecesario",
+      "emoji": "🛑",
+      "color": "#e74c3c",
+      "descripcion": "Gastos de lujo o caprichos"
+    },
+    {
+      "id": "inversion",
+      "etiqueta": "Inversión",
+      "emoji": "📈",
+      "color": "#3498db",
+      "descripcion": "Gastos con retorno esperado"
+    },
+    {
+      "id": "ahorro",
+      "etiqueta": "Ahorro",
+      "emoji": "🎯",
+      "color": "#f39c12",
+      "descripcion": "Dinero reservado"
+    }
+  ],
+  "estadísticas": {
+    "métricasPrincipales": [
+      "totalIncome",
+      "totalExpenses",
+      "balance",
+      "savingsRatio"
+    ],
+    "métricasDetalladas": [
+      "avgExpense",
+      "avgIncome",
+      "maxExpense",
+      "maxIncome",
+      "totalTransactions",
+      "savingsRatio"
+    ],
+    "insightsAutomáticos": true,
+    "nivelesAlerta": {
+      "gastoInecesarioAlto": 30,
+      "gastoDiarioAlto": 100,
+      "ratioAhorroMinimo": 10,
+      "ratioAhorroExcelente": 30
+    }
+  },
+  "tablas": {
+    "topTransacciones": {
+      "cantidad": 10,
+      "columnas": ["fecha", "descripcion", "categoria", "monto", "tipo"]
+    },
+    "categoriasDetalle": {
+      "cantidad": 8,
+      "mostrarProgreso": true
+    }
+  },
+  "presupuestos": {
+    "habilitados": true,
+    "mostrarAlertasVisuales": true,
+    "coloresEstado": {
+      "ok": "#27ae60",
+      "critico": "#f39c12",
+      "excedido": "#e74c3c"
+    }
+  },
+  "deudas": {
+    "habilitadas": true,
+    "mostrarProgreso": true,
+    "mostrarProximoVencimiento": true,
+    "agruparPorTipo": true
+  },
+  "metas": {
+    "habilitadas": true,
+    "mostrarProgreso": true,
+    "mostrarFechaVencimiento": false,
+    "ordenarPor": "progreso"
+  },
+  "exportación": {
+    "habilitada": true,
+    "formatosDisponibles": ["CSV", "JSON", "PDF"],
+    "incluirEnExportación": [
+      "transacciones",
+      "deudas",
+      "presupuestos",
+      "metas"
+    ]
+  },
+  "diseño": {
+    "tema": "light",
+    "lenguaje": "es-ES",
+    "modoOscuro": false,
+    "animacionesHabilitadas": true,
+    "responsividad": {
+      "mobile": 768,
+      "tablet": 1024,
+      "desktop": 1400
+    }
+  },
+  "firebase": {
+    "habilitado": false,
+    "config": {
+      "apiKey": "AIzaSyDxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "authDomain": "nexus-finanzas.firebaseapp.com",
+      "projectId": "nexus-finanzas",
+      "storageBucket": "nexus-finanzas.appspot.com",
+      "messagingSenderId": "123456789",
+      "appId": "1:123456789:web:abcdef1234567890"
+    }
+  },
+  "api": {
+    "baseURL": "https://api.ejemplo.com",
+    "endpoints": {
+      "transacciones": "/api/usuarios/{userId}/transacciones",
+      "deudas": "/api/usuarios/{userId}/deudas",
+      "presupuestos": "/api/usuarios/{userId}/presupuestos",
+      "metas": "/api/usuarios/{userId}/metas",
+      "estadisticas": "/api/usuarios/{userId}/estadisticas"
+    },
+    "timeout": 10000,
+    "reintentarEnError": true,
+    "maxReintentos": 3
+  },
+  "rendimiento": {
+    "cacheLocal": true,
+    "cacheExpiracionMs": 300000,
+    "lazyLoading": true,
+    "compresionDatos": true,
+    "limitarGráficos": true
+  },
+  "notificaciones": {
+    "habilitadas": true,
+    "alertasPresupuesto": true,
+    "recordatorios": true,
+    "insights": true
+  },
+  "idioma": {
+    "código": "es-ES",
+    "nombre": "Español (España)",
+    "formatoMoneda": "USD",
+    "formatoFecha": "dd/MM/yyyy",
+    "formatoHora": "HH:mm:ss"
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "name": "nexus-finanzas-dashboard",
+  "version": "1.0.0",
+  "description": "Dashboard analítico ultra detallado para NEXUS Finanzas - Herramienta de análisis de finanzas personales con gráficos interactivos",
+  "main": "dashboard.html",
+  "scripts": {
+    "start": "http-server -p 8000 -o",
+    "serve": "python -m http.server 8000",
+    "build": "echo 'Dashboard es estático, listo para deploy'",
+    "deploy": "netlify deploy --prod",
+    "deploy-dev": "netlify deploy --dir=.",
+    "dev": "live-server --port=8000 --open=dashboard.html"
+  },
+  "keywords": [
+    "finanzas",
+    "dashboard",
+    "análisis",
+    "gráficos",
+    "presupuesto",
+    "deudas",
+    "metas",
+    "transacciones",
+    "estadísticas",
+    "chart.js",
+    "netlify"
+  ],
+  "author": "NEXUS Finanzas",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "live-server": "^1.2.2",
+    "netlify-cli": "^16.0.0"
+  },
+  "dependencies": {
+    "chart.js": "^4.4.0",
+    "chartjs-plugin-datalabels": "^2.2.0",
+    "firebase": "^10.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tuusuario/nexus-finanzas-dashboard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tuusuario/nexus-finanzas-dashboard/issues"
+  },
+  "homepage": "https://github.com/tuusuario/nexus-finanzas-dashboard#readme",
+  "netlify": {
+    "build": {
+      "command": "echo 'No build needed'",
+      "publish": "."
+    }
+  }
+}

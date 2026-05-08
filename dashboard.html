@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS Finanzas - Dashboard Analítico Detallado</title>
+    <!-- Firebase Scripts (Compat version for simpler API) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #667eea;
+            margin: 0;
+        }
+
+        .header-info {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .info-box {
+            text-align: center;
+        }
+
+        .info-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #999;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .period-selector {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .period-btn {
+            padding: 8px 16px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .period-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .period-btn:hover {
+            border-color: #667eea;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .grid.full {
+            grid-template-columns: 1fr;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(0,0,0,0.15);
+        }
+
+        .card h2 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h3 {
+            font-size: 14px;
+            color: #666;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 20px;
+        }
+
+        .chart-container.tall {
+            height: 400px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #666;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .stat-value.positive {
+            color: #27ae60;
+        }
+
+        .stat-value.negative {
+            color: #e74c3c;
+        }
+
+        .stat-value.neutral {
+            color: #3498db;
+        }
+
+        .metric-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .metric {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 4px solid #667eea;
+        }
+
+        .metric-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 5px 0;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+        }
+
+        .category-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .category-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .category-item .emoji {
+            font-size: 20px;
+            margin-right: 10px;
+        }
+
+        .category-item .name {
+            flex: 1;
+        }
+
+        .category-item .amount {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .alert.warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            color: #856404;
+        }
+
+        .alert.danger {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            color: #721c24;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            color: #155724;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .table th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge.necesario {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge.innecesario {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge.inversion {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .badge.ahorro {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-weight: 600;
+            color: #999;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .radar-container {
+            position: relative;
+            height: 350px;
+        }
+
+        .debt-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .debt-card .desc {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .debt-card .amount {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .debt-card .progress {
+            background: rgba(255,255,255,0.3);
+            height: 6px;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .debt-card .progress-fill {
+            background: rgba(255,255,255,0.9);
+            height: 100%;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            padding: 20px;
+            margin-top: 30px;
+            font-size: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .header-info {
+                justify-content: center;
+                width: 100%;
+            }
+
+            .period-selector {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Modal de Login -->
+    <div id="loginModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 12px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-width: 400px; width: 90%;">
+            <h2 style="color: #667eea; margin-bottom: 30px; text-align: center;">🔐 Login NEXUS Finanzas</h2>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; color: #666; font-weight: 600;">Email:</label>
+                <input type="email" id="loginEmail" placeholder="tu@email.com" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+            </div>
+
+            <div style="margin-bottom: 30px;">
+                <label style="display: block; margin-bottom: 8px; color: #666; font-weight: 600;">Contraseña:</label>
+                <input type="password" id="loginPassword" placeholder="••••••••" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+            </div>
+
+            <button id="loginBtn" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; margin-bottom: 10px; font-size: 16px;">
+                Ingresar
+            </button>
+
+            <button id="googleLoginBtn" style="width: 100%; padding: 12px; background: white; color: #667eea; border: 2px solid #667eea; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 16px;">
+                📱 Login con Google
+            </button>
+
+            <p style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+                Demo: usa cualquier email y contraseña
+            </p>
+        </div>
+    </div>
+
+    <div class="container" style="display: none;">
+        <div class="header">
+            <div>
+                <h1>📊 NEXUS Finanzas</h1>
+                <p style="color: #999; margin-top: 5px;">Dashboard Analítico Detallado</p>
+            </div>
+            <div class="header-info">
+                <div class="info-box">
+                    <div class="info-label">Período</div>
+                    <div class="info-value" id="periodDisplay">Hoy</div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label">Total Ingresos</div>
+                    <div class="info-value positive" id="totalIncome">$0</div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label">Total Gastos</div>
+                    <div class="info-value negative" id="totalExpenses">$0</div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label">Balance</div>
+                    <div class="info-value" id="totalBalance">$0</div>
+                </div>
+            </div>
+            <div class="period-selector">
+                <button class="period-btn active" data-period="day">Hoy</button>
+                <button class="period-btn" data-period="week">Esta Semana</button>
+                <button class="period-btn" data-period="month">Este Mes</button>
+                <button class="period-btn" data-period="year">Este Año</button>
+                <button class="period-btn" data-period="all">Todo</button>
+            </div>
+        </div>
+
+        <div class="grid full">
+            <div class="card">
+                <h2>📈 Evolución de Saldo</h2>
+                <div class="chart-container tall">
+                    <canvas id="balanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>💰 Ingresos vs Gastos</h2>
+                <div class="chart-container">
+                    <canvas id="incomeExpenseChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📊 Distribución de Gastos</h2>
+                <div class="chart-container">
+                    <canvas id="expenseDistributionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>🏷️ Gastos por Categoría</h2>
+                <div id="categoryBreakdown" class="category-list"></div>
+            </div>
+
+            <div class="card">
+                <h2>🎯 Análisis de Clasificación</h2>
+                <div class="chart-container">
+                    <canvas id="classificationChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>📅 Top 10 Transacciones</h2>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Descripción</th>
+                            <th>Categoría</th>
+                            <th>Monto</th>
+                            <th>Tipo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="topTransactionsTable"></tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>💳 Deudas Activas</h2>
+                <div id="deudasList"></div>
+            </div>
+        </div>
+
+        <div class="grid full">
+            <div class="card">
+                <h2>📊 Métricas Detalladas</h2>
+
+                <div class="tabs">
+                    <button class="tab active" data-tab="overview">Resumen</button>
+                    <button class="tab" data-tab="trends">Tendencias</button>
+                    <button class="tab" data-tab="comparison">Comparativas</button>
+                    <button class="tab" data-tab="insights">Insights</button>
+                </div>
+
+                <div id="overview" class="tab-content active">
+                    <div class="metric-group">
+                        <div class="metric">
+                            <div class="metric-label">Gasto Promedio</div>
+                            <div class="metric-value" id="avgExpense">$0</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Ingreso Promedio</div>
+                            <div class="metric-value positive" id="avgIncome">$0</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Mayor Gasto</div>
+                            <div class="metric-value" id="maxExpense">$0</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Mayor Ingreso</div>
+                            <div class="metric-value positive" id="maxIncome">$0</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Total Transacciones</div>
+                            <div class="metric-value neutral" id="totalTransactions">0</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Ratio Ahorro</div>
+                            <div class="metric-value" id="savingsRatio">0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="trends" class="tab-content">
+                    <h3>Tendencias Mensuales</h3>
+                    <div class="chart-container tall">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+
+                <div id="comparison" class="tab-content">
+                    <h3>Comparativa por Tipo de Gasto</h3>
+                    <div class="chart-container tall">
+                        <canvas id="comparisonChart"></canvas>
+                    </div>
+                </div>
+
+                <div id="insights" class="tab-content">
+                    <div id="insightsList"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>📍 Presupuestos</h2>
+                <div id="budgetsList"></div>
+            </div>
+
+            <div class="card">
+                <h2>🎯 Metas</h2>
+                <div id="goalsList"></div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Dashboard generado automáticamente | Última actualización: <span id="lastUpdate">--</span></p>
+            <p>NEXUS Finanzas © 2025 - Herramienta de Análisis Financiero Detallado</p>
+        </div>
+    </div>
+
+    <script>
+        const chartColors = {
+            primary: '#667eea',
+            secondary: '#764ba2',
+            success: '#27ae60',
+            danger: '#e74c3c',
+            warning: '#f39c12',
+            info: '#3498db',
+            light: '#ecf0f1',
+            dark: '#2c3e50'
+        };
+
+        // Datos simulados (reemplazar con datos reales de API/Firebase)
+        const generateMockData = () => {
+            const today = new Date();
+            const transactions = [];
+            const debts = [];
+            const budgets = [];
+            const goals = [];
+
+            // Generar transacciones
+            for (let i = 0; i < 90; i++) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+
+                const isIncome = Math.random() > 0.75;
+                const amount = isIncome
+                    ? Math.random() * 3000 + 500
+                    : Math.random() * 500 + 10;
+
+                const categories = isIncome
+                    ? ['Salario', 'Freelance', 'Inversiones']
+                    : ['Comida', 'Transporte', 'Entretenimiento', 'Servicios', 'Compras', 'Salud'];
+
+                const category = categories[Math.floor(Math.random() * categories.length)];
+
+                const classifications = ['necesario', 'innecesario', 'inversion', 'ahorro'];
+                const classification = isIncome ? 'ingreso' : classifications[Math.floor(Math.random() * classifications.length)];
+
+                transactions.push({
+                    id: `tx_${i}`,
+                    descripcion: `${category} - Transacción ${i}`,
+                    monto: amount,
+                    tipo: isIncome ? 'ingreso' : 'gasto',
+                    categoria: category,
+                    subcategoria: 'General',
+                    emoji: '🏪',
+                    fecha: date.toISOString(),
+                    clasificacion: classification
+                });
+            }
+
+            // Generar deudas
+            debts.push({
+                id: 'debt_1',
+                descripcion: 'Tarjeta de Crédito',
+                montoTotal: 5000,
+                totalAbonado: 2000,
+                emoji: '💳',
+                saldoPendiente: 3000,
+                categoria: 'Crédito',
+                tipo: 'gasto'
+            });
+
+            debts.push({
+                id: 'debt_2',
+                descripcion: 'Préstamo Personal',
+                montoTotal: 10000,
+                totalAbonado: 4000,
+                emoji: '🏦',
+                saldoPendiente: 6000,
+                categoria: 'Préstamo',
+                tipo: 'gasto'
+            });
+
+            // Generar presupuestos
+            budgets.push({
+                categoria: 'Comida',
+                limite: 500,
+                frecuencia: 'mensual',
+                gastado: 450,
+                emoji: '🍔'
+            });
+
+            budgets.push({
+                categoria: 'Entretenimiento',
+                limite: 300,
+                frecuencia: 'mensual',
+                gastado: 280,
+                emoji: '🎮'
+            });
+
+            // Generar metas
+            goals.push({
+                nombre: 'Fondo de Emergencia',
+                meta: 10000,
+                actual: 6500,
+                emoji: '🛡️'
+            });
+
+            goals.push({
+                nombre: 'Vacaciones 2025',
+                meta: 5000,
+                actual: 2800,
+                emoji: '✈️'
+            });
+
+            return { transactions, debts, budgets, goals };
+        };
+
+        let allData = generateMockData();
+        let currentPeriod = 'day';
+
+        // Filtrar datos por período
+        const filterDataByPeriod = (period) => {
+            const today = new Date();
+            let startDate = new Date();
+
+            switch(period) {
+                case 'day':
+                    startDate.setHours(0, 0, 0, 0);
+                    break;
+                case 'week':
+                    startDate.setDate(today.getDate() - today.getDay());
+                    break;
+                case 'month':
+                    startDate.setDate(1);
+                    break;
+                case 'year':
+                    startDate.setMonth(0, 1);
+                    break;
+                case 'all':
+                    startDate = new Date(0);
+                    break;
+            }
+
+            return allData.transactions.filter(t => new Date(t.fecha) >= startDate);
+        };
+
+        // Calcular estadísticas
+        const calculateStats = (transactions) => {
+            const income = transactions.filter(t => t.tipo === 'ingreso');
+            const expenses = transactions.filter(t => t.tipo === 'gasto');
+
+            const totalIncome = income.reduce((sum, t) => sum + t.monto, 0);
+            const totalExpense = expenses.reduce((sum, t) => sum + t.monto, 0);
+
+            return {
+                totalIncome,
+                totalExpense,
+                balance: totalIncome - totalExpense,
+                avgIncome: income.length > 0 ? totalIncome / income.length : 0,
+                avgExpense: expenses.length > 0 ? totalExpense / expenses.length : 0,
+                maxIncome: income.length > 0 ? Math.max(...income.map(t => t.monto)) : 0,
+                maxExpense: expenses.length > 0 ? Math.max(...expenses.map(t => t.monto)) : 0,
+                totalTransactions: transactions.length,
+                savingsRatio: totalIncome > 0 ? ((totalIncome - totalExpense) / totalIncome * 100).toFixed(2) : 0
+            };
+        };
+
+        // Formatear moneda
+        const formatCurrency = (amount) => {
+            return new Intl.NumberFormat('es-ES', {
+                style: 'currency',
+                currency: 'USD'
+            }).format(amount);
+        };
+
+        // Actualizar dashboard
+        const updateDashboard = () => {
+            const filtered = filterDataByPeriod(currentPeriod);
+            const stats = calculateStats(filtered);
+
+            // Actualizar header
+            document.getElementById('totalIncome').textContent = formatCurrency(stats.totalIncome);
+            document.getElementById('totalExpense').textContent = formatCurrency(stats.totalExpense);
+            document.getElementById('totalBalance').className = 'info-value ' + (stats.balance >= 0 ? 'positive' : 'negative');
+            document.getElementById('totalBalance').textContent = formatCurrency(stats.balance);
+
+            // Actualizar métricas
+            document.getElementById('avgExpense').textContent = formatCurrency(stats.avgExpense);
+            document.getElementById('avgIncome').textContent = formatCurrency(stats.avgIncome);
+            document.getElementById('maxExpense').textContent = formatCurrency(stats.maxExpense);
+            document.getElementById('maxIncome').textContent = formatCurrency(stats.maxIncome);
+            document.getElementById('totalTransactions').textContent = stats.totalTransactions;
+            document.getElementById('savingsRatio').textContent = stats.savingsRatio + '%';
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleString('es-ES');
+
+            // Actualizar gráficos
+            updateAllCharts(filtered, stats);
+            updateCategoryBreakdown(filtered);
+            updateTopTransactions(filtered);
+            updateDebtsList();
+            updateBudgetsList();
+            updateGoalsList();
+            updateInsights(filtered, stats);
+        };
+
+        let charts = {};
+
+        // Gráfico de Evolución de Saldo
+        const updateBalanceChart = (transactions) => {
+            if (charts.balance) charts.balance.destroy();
+
+            const dailyData = {};
+            let balance = 0;
+
+            transactions.sort((a, b) => new Date(a.fecha) - new Date(b.fecha)).forEach(t => {
+                const date = new Date(t.fecha).toLocaleDateString('es-ES');
+                balance += (t.tipo === 'ingreso' ? t.monto : -t.monto);
+                dailyData[date] = balance;
+            });
+
+            const ctx = document.getElementById('balanceChart').getContext('2d');
+            charts.balance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Object.keys(dailyData),
+                    datasets: [{
+                        label: 'Saldo Acumulado',
+                        data: Object.values(dailyData),
+                        borderColor: chartColors.primary,
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 3,
+                        pointBackgroundColor: chartColors.primary,
+                        pointBorderColor: 'white',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                        datalabels: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: v => formatCurrency(v) }
+                        }
+                    }
+                }
+            });
+        };
+
+        // Gráfico Ingresos vs Gastos
+        const updateIncomeExpenseChart = (transactions, stats) => {
+            if (charts.incomeExpense) charts.incomeExpense.destroy();
+
+            const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
+            charts.incomeExpense = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Ingresos', 'Gastos'],
+                    datasets: [{
+                        label: 'Monto',
+                        data: [stats.totalIncome, stats.totalExpense],
+                        backgroundColor: [chartColors.success, chartColors.danger],
+                        borderRadius: 8,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: {
+                            color: 'white',
+                            font: { weight: 'bold' },
+                            formatter: v => formatCurrency(v)
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { callback: v => formatCurrency(v) } }
+                    }
+                }
+            });
+        };
+
+        // Gráfico Distribución de Gastos
+        const updateExpenseDistributionChart = (transactions) => {
+            if (charts.distribution) charts.distribution.destroy();
+
+            const expenses = transactions.filter(t => t.tipo === 'gasto');
+            const categoryTotals = {};
+
+            expenses.forEach(t => {
+                categoryTotals[t.categoria] = (categoryTotals[t.categoria] || 0) + t.monto;
+            });
+
+            const colors = [
+                '#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe',
+                '#43e97b', '#fa709a', '#fee140', '#30cfd0', '#a8edea'
+            ];
+
+            const ctx = document.getElementById('expenseDistributionChart').getContext('2d');
+            charts.distribution = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(categoryTotals),
+                    datasets: [{
+                        data: Object.values(categoryTotals),
+                        backgroundColor: colors,
+                        borderColor: 'white',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right' },
+                        datalabels: {
+                            color: 'white',
+                            font: { weight: 'bold' },
+                            formatter: (v, ctx) => {
+                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                return ((v / total) * 100).toFixed(1) + '%';
+                            }
+                        }
+                    }
+                }
+            });
+        };
+
+        // Gráfico Clasificación de Gastos
+        const updateClassificationChart = (transactions) => {
+            if (charts.classification) charts.classification.destroy();
+
+            const expenses = transactions.filter(t => t.tipo === 'gasto');
+            const classificationTotals = {
+                necesario: 0,
+                innecesario: 0,
+                inversion: 0,
+                ahorro: 0
+            };
+
+            expenses.forEach(t => {
+                if (t.clasificacion && classificationTotals.hasOwnProperty(t.clasificacion)) {
+                    classificationTotals[t.clasificacion] += t.monto;
+                }
+            });
+
+            const ctx = document.getElementById('classificationChart').getContext('2d');
+            charts.classification = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Necesario', 'Innecesario', 'Inversión', 'Ahorro'],
+                    datasets: [{
+                        label: 'Gastos por Clasificación',
+                        data: [
+                            classificationTotals.necesario,
+                            classificationTotals.innecesario,
+                            classificationTotals.inversion,
+                            classificationTotals.ahorro
+                        ],
+                        borderColor: chartColors.primary,
+                        backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                        borderWidth: 2,
+                        pointBackgroundColor: chartColors.primary,
+                        pointBorderColor: 'white',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        datalabels: { display: false }
+                    },
+                    scales: {
+                        r: { beginAtZero: true, ticks: { callback: v => formatCurrency(v) } }
+                    }
+                }
+            });
+        };
+
+        // Gráfico de Tendencias
+        const updateTrendChart = (transactions) => {
+            if (charts.trend) charts.trend.destroy();
+
+            const monthlyData = {};
+            transactions.forEach(t => {
+                const date = new Date(t.fecha);
+                const month = date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' });
+                if (!monthlyData[month]) {
+                    monthlyData[month] = { income: 0, expense: 0 };
+                }
+                if (t.tipo === 'ingreso') {
+                    monthlyData[month].income += t.monto;
+                } else {
+                    monthlyData[month].expense += t.monto;
+                }
+            });
+
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            charts.trend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Object.keys(monthlyData),
+                    datasets: [
+                        {
+                            label: 'Ingresos',
+                            data: Object.values(monthlyData).map(d => d.income),
+                            borderColor: chartColors.success,
+                            backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Gastos',
+                            data: Object.values(monthlyData).map(d => d.expense),
+                            borderColor: chartColors.danger,
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        datalabels: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { callback: v => formatCurrency(v) } }
+                    }
+                }
+            });
+        };
+
+        // Gráfico de Comparativa
+        const updateComparisonChart = (transactions) => {
+            if (charts.comparison) charts.comparison.destroy();
+
+            const expenses = transactions.filter(t => t.tipo === 'gasto');
+            const categoryData = {};
+
+            expenses.forEach(t => {
+                if (!categoryData[t.categoria]) {
+                    categoryData[t.categoria] = {
+                        necesario: 0,
+                        innecesario: 0,
+                        inversion: 0,
+                        ahorro: 0
+                    };
+                }
+                if (t.clasificacion && categoryData[t.categoria].hasOwnProperty(t.clasificacion)) {
+                    categoryData[t.categoria][t.clasificacion] += t.monto;
+                }
+            });
+
+            const categories = Object.keys(categoryData).slice(0, 6);
+
+            const ctx = document.getElementById('comparisonChart').getContext('2d');
+            charts.comparison = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: categories,
+                    datasets: [
+                        {
+                            label: 'Necesario',
+                            data: categories.map(c => categoryData[c].necesario),
+                            backgroundColor: '#27ae60'
+                        },
+                        {
+                            label: 'Innecesario',
+                            data: categories.map(c => categoryData[c].innecesario),
+                            backgroundColor: '#e74c3c'
+                        },
+                        {
+                            label: 'Inversión',
+                            data: categories.map(c => categoryData[c].inversion),
+                            backgroundColor: '#3498db'
+                        },
+                        {
+                            label: 'Ahorro',
+                            data: categories.map(c => categoryData[c].ahorro),
+                            backgroundColor: '#f39c12'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { position: 'top' },
+                        datalabels: { display: false }
+                    },
+                    scales: {
+                        x: { stacked: true, ticks: { callback: v => formatCurrency(v) } },
+                        y: { stacked: true }
+                    }
+                }
+            });
+        };
+
+        // Actualizar todos los gráficos
+        const updateAllCharts = (transactions, stats) => {
+            updateBalanceChart(transactions);
+            updateIncomeExpenseChart(transactions, stats);
+            updateExpenseDistributionChart(transactions);
+            updateClassificationChart(transactions);
+            updateTrendChart(transactions);
+            updateComparisonChart(transactions);
+        };
+
+        // Desglose por categoría
+        const updateCategoryBreakdown = (transactions) => {
+            const expenses = transactions.filter(t => t.tipo === 'gasto');
+            const categoryTotals = {};
+
+            expenses.forEach(t => {
+                categoryTotals[t.categoria] = (categoryTotals[t.categoria] || 0) + t.monto;
+            });
+
+            const sorted = Object.entries(categoryTotals)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 8);
+
+            const maxAmount = Math.max(...sorted.map(s => s[1]));
+
+            const html = sorted.map(([category, amount]) => {
+                const percentage = (amount / maxAmount) * 100;
+                return `
+                    <div class="category-item">
+                        <span class="emoji">🏷️</span>
+                        <span class="name">${category}</span>
+                        <div style="flex: 1; margin-left: 10px;">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${percentage}%"></div>
+                            </div>
+                        </div>
+                        <span class="amount">${formatCurrency(amount)}</span>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('categoryBreakdown').innerHTML = html;
+        };
+
+        // Top transacciones
+        const updateTopTransactions = (transactions) => {
+            const sorted = transactions
+                .sort((a, b) => b.monto - a.monto)
+                .slice(0, 10);
+
+            const html = sorted.map(t => {
+                const date = new Date(t.fecha).toLocaleDateString('es-ES');
+                const badgeClass = t.clasificacion ? `badge ${t.clasificacion}` : '';
+                const badge = t.clasificacion ? `<span class="${badgeClass}">${t.clasificacion}</span>` : '';
+                return `
+                    <tr>
+                        <td>${date}</td>
+                        <td>${t.descripcion}</td>
+                        <td>${t.categoria}</td>
+                        <td style="font-weight: 600; color: ${t.tipo === 'ingreso' ? '#27ae60' : '#e74c3c'}">${formatCurrency(t.monto)}</td>
+                        <td>${badge}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('topTransactionsTable').innerHTML = html;
+        };
+
+        // Lista de deudas
+        const updateDebtsList = () => {
+            const html = allData.debts.map(debt => {
+                const percentage = (debt.totalAbonado / debt.montoTotal) * 100;
+                return `
+                    <div class="debt-card">
+                        <div class="desc">${debt.emoji} ${debt.descripcion}</div>
+                        <div class="amount">${formatCurrency(debt.saldoPendiente)} pendiente</div>
+                        <div style="font-size: 12px; margin-bottom: 8px;">
+                            Abonado: ${formatCurrency(debt.totalAbonado)} / Total: ${formatCurrency(debt.montoTotal)}
+                        </div>
+                        <div class="progress">
+                            <div class="progress-fill" style="width: ${percentage}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('deudasList').innerHTML = html;
+        };
+
+        // Lista de presupuestos
+        const updateBudgetsList = () => {
+            const html = allData.budgets.map(budget => {
+                const percentage = (budget.gastado / budget.limite) * 100;
+                const status = percentage >= 100 ? 'danger' : percentage >= 80 ? 'warning' : 'success';
+                return `
+                    <div class="alert ${status}">
+                        <span>${budget.emoji}</span>
+                        <div style="flex: 1;">
+                            <div><strong>${budget.categoria}</strong> - ${budget.frecuencia}</div>
+                            <div style="font-size: 12px; margin: 5px 0;">
+                                Gastado: ${formatCurrency(budget.gastado)} / Límite: ${formatCurrency(budget.limite)}
+                            </div>
+                            <div class="progress-bar" style="margin: 5px 0;">
+                                <div class="progress-fill" style="width: ${Math.min(percentage, 100)}%; background: ${
+                                    status === 'danger' ? '#e74c3c' : status === 'warning' ? '#f39c12' : '#27ae60'
+                                }"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('budgetsList').innerHTML = html;
+        };
+
+        // Lista de metas
+        const updateGoalsList = () => {
+            const html = allData.goals.map(goal => {
+                const percentage = (goal.actual / goal.meta) * 100;
+                return `
+                    <div style="margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span><strong>${goal.emoji} ${goal.nombre}</strong></span>
+                            <span style="color: #667eea; font-weight: 600;">${percentage.toFixed(1)}%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${percentage}%"></div>
+                        </div>
+                        <div style="font-size: 12px; color: #999; margin-top: 5px;">
+                            ${formatCurrency(goal.actual)} / ${formatCurrency(goal.meta)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('goalsList').innerHTML = html;
+        };
+
+        // Insights
+        const updateInsights = (transactions, stats) => {
+            const expenses = transactions.filter(t => t.tipo === 'gasto');
+            const categoryTotals = {};
+
+            expenses.forEach(t => {
+                categoryTotals[t.categoria] = (categoryTotals[t.categoria] || 0) + t.monto;
+            });
+
+            const insights = [];
+
+            if (stats.savingsRatio > 20) {
+                insights.push({
+                    type: 'success',
+                    text: `¡Excelente! Tu ratio de ahorro es ${stats.savingsRatio}%. Vas por buen camino.`
+                });
+            } else if (stats.savingsRatio < 0) {
+                insights.push({
+                    type: 'danger',
+                    text: `⚠️ Gastos superan ingresos en ${Math.abs(stats.savingsRatio).toFixed(2)}%. Revisa tus gastos.`
+                });
+            }
+
+            const topCategory = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0];
+            if (topCategory) {
+                insights.push({
+                    type: 'info',
+                    text: `Tu categoría con más gastos es "${topCategory[0]}" con ${formatCurrency(topCategory[1])}.`
+                });
+            }
+
+            const avgDaily = stats.totalExpense / Math.max(1, transactions.length / 30);
+            if (avgDaily > 100) {
+                insights.push({
+                    type: 'warning',
+                    text: `Tu gasto promedio diario es ${formatCurrency(avgDaily)}. Considera reducir gastos innecesarios.`
+                });
+            }
+
+            const unnecessary = expenses.filter(t => t.clasificacion === 'innecesario').reduce((sum, t) => sum + t.monto, 0);
+            if (unnecessary > stats.totalExpense * 0.2) {
+                insights.push({
+                    type: 'warning',
+                    text: `Gastos innecesarios: ${formatCurrency(unnecessary)} (${(unnecessary/stats.totalExpense*100).toFixed(1)}% del total).`
+                });
+            }
+
+            const html = insights.map(insight => `
+                <div class="alert ${insight.type}">
+                    ${insight.text}
+                </div>
+            `).join('');
+
+            document.getElementById('insightsList').innerHTML = html || '<p style="color: #999;">No hay insights disponibles en este momento.</p>';
+        };
+
+        // Event listeners
+        document.querySelectorAll('.period-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentPeriod = e.target.dataset.period;
+
+                const periodLabels = {
+                    day: 'Hoy',
+                    week: 'Esta Semana',
+                    month: 'Este Mes',
+                    year: 'Este Año',
+                    all: 'Todo'
+                };
+
+                document.getElementById('periodDisplay').textContent = periodLabels[currentPeriod];
+                updateDashboard();
+            });
+        });
+
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                e.target.classList.add('active');
+                document.getElementById(e.target.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Inicializar Firebase y dashboard
+        Chart.register(ChartDataLabels);
+
+        const firebaseConfig = {
+            apiKey: 'AIzaSyDKA5h45fH297LNZoXYGE_iQAD-MeVmysA',
+            appId: '1:462918893496:web:81465c80ecb526faf7994d',
+            messagingSenderId: '462918893496',
+            projectId: 'finanzass-nexus',
+            authDomain: 'finanzass-nexus.firebaseapp.com',
+            storageBucket: 'finanzass-nexus.firebasestorage.app',
+        };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        const loginModal = document.getElementById('loginModal');
+        const loginEmail = document.getElementById('loginEmail');
+        const loginPassword = document.getElementById('loginPassword');
+        const loginBtn = document.getElementById('loginBtn');
+        const googleLoginBtn = document.getElementById('googleLoginBtn');
+
+        // Función para cargar datos del usuario
+        async function cargarDatosUsuario(user) {
+            console.log('✅ Usuario autenticado:', user.email);
+
+            try {
+                // Cargar transacciones
+                const txSnapshot = await db
+                    .collection('usuarios')
+                    .doc(user.uid)
+                    .collection('transacciones')
+                    .orderBy('fecha', 'desc')
+                    .get();
+
+                const transacciones = txSnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        ...data,
+                        fecha: data.fecha?.toDate ? data.fecha.toDate() : new Date(data.fecha)
+                    };
+                });
+
+                console.log('✅ Transacciones cargadas:', transacciones.length);
+
+                // Cargar metas
+                const metasSnapshot = await db
+                    .collection('usuarios')
+                    .doc(user.uid)
+                    .collection('metas')
+                    .get();
+                const metas = metasSnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    nombre: doc.data().nombre,
+                    meta: doc.data().meta,
+                    actual: doc.data().montoActual || doc.data().actual || 0,
+                    emoji: '🎯'
+                }));
+
+                console.log('✅ Metas cargadas:', metas.length);
+
+                // Cargar presupuestos
+                const presupuestosSnapshot = await db
+                    .collection('usuarios')
+                    .doc(user.uid)
+                    .collection('presupuestos')
+                    .get();
+                const presupuestos = presupuestosSnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    emoji: '📊'
+                }));
+
+                console.log('✅ Presupuestos cargados:', presupuestos.length);
+
+                // Cargar deudas
+                const deudasSnapshot = await db
+                    .collection('usuarios')
+                    .doc(user.uid)
+                    .collection('deudas')
+                    .get();
+                const deudas = deudasSnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        descripcion: data.descripcion,
+                        montoTotal: data.montoTotal,
+                        totalAbonado: data.totalAbonado || 0,
+                        saldoPendiente: (data.montoTotal - (data.totalAbonado || 0)),
+                        emoji: '💳',
+                        categoria: data.categoria || 'Deuda',
+                        tipo: 'gasto'
+                    };
+                });
+
+                console.log('✅ Deudas cargadas:', deudas.length);
+
+                // Reemplazar datos globales
+                allData = {
+                    transactions: transacciones,
+                    debts: deudas,
+                    budgets: presupuestos,
+                    goals: metas
+                };
+
+                console.log('✅ Dashboard actualizado con datos reales');
+
+                // Ocultar login y mostrar dashboard
+                loginModal.style.display = 'none';
+                document.querySelector('.container').style.display = 'block';
+
+                updateDashboard();
+
+            } catch (error) {
+                console.error('❌ Error cargando datos:', error.message);
+                alert('Error cargando datos: ' + error.message);
+            }
+        }
+
+        // Login con email/password
+        loginBtn.addEventListener('click', async () => {
+            const email = loginEmail.value.trim();
+            const password = loginPassword.value.trim();
+
+            if (!email || !password) {
+                alert('Por favor completa email y contraseña');
+                return;
+            }
+
+            try {
+                loginBtn.disabled = true;
+                loginBtn.textContent = 'Ingresando...';
+
+                const result = await auth.signInWithEmailAndPassword(email, password);
+                console.log('✅ Login exitoso');
+
+            } catch (error) {
+                console.error('❌ Error de login:', error.message);
+
+                // Si no existe, crear cuenta
+                if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                    try {
+                        await auth.createUserWithEmailAndPassword(email, password);
+                        console.log('✅ Cuenta creada');
+                    } catch (createError) {
+                        alert('Error: ' + createError.message);
+                    }
+                } else {
+                    alert('Error de login: ' + error.message);
+                }
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Ingresar';
+            }
+        });
+
+        // Login con Google
+        googleLoginBtn.addEventListener('click', async () => {
+            try {
+                googleLoginBtn.disabled = true;
+                googleLoginBtn.textContent = 'Conectando...';
+
+                const provider = new firebase.auth.GoogleAuthProvider();
+                await auth.signInWithPopup(provider);
+                console.log('✅ Login con Google exitoso');
+
+            } catch (error) {
+                console.error('❌ Error Google login:', error.message);
+                alert('Error: ' + error.message);
+            } finally {
+                googleLoginBtn.disabled = false;
+                googleLoginBtn.textContent = '📱 Login con Google';
+            }
+        });
+
+        // Escuchar cambios de autenticación
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                // Usuario autenticado, cargar datos
+                loginModal.style.display = 'none';
+                document.querySelector('.container').style.display = 'block';
+                await cargarDatosUsuario(user);
+            } else {
+                // Sin usuario, mostrar login
+                loginModal.style.display = 'flex';
+                document.querySelector('.container').style.display = 'none';
+                console.log('⚠️ Usuario no autenticado');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1035,6 +1035,10 @@
     let selectedYear  = new Date().getFullYear();
     let charts = {};
 
+    // Cache para evitar recalcular proyección/comparativa cuando solo cambia el periodo
+    let _lastProyeccionPeriod = null;   // 'YYYY-MM' o 'other' — solo se recalcula si cambia
+    let _lastComparativaPeriod = null;
+
     // Una transacción es de ahorro si su categoria empieza con 'Ahorro' (igual que la app Flutter)
     const isAhorroTx = (t) =>
         String(t.categoria || '').startsWith('Ahorro');
@@ -2349,6 +2353,9 @@
             .orderBy('fecha', 'desc')
             .onSnapshot(snap => {
                 allData.transactions = parseTransacciones(snap);
+                // Reset de caché para forzar recalculo con datos frescos
+                _lastProyeccionPeriod = null;
+                _lastComparativaPeriod = null;
                 realtimeReady.tx = true;
                 checkAndShowDashboard();
                 if (dashboardVisible) updateDashboard();
@@ -2992,6 +2999,11 @@
         const isCurrentMonth = currentPeriod === 'month' ||
             (currentPeriod === 'specific' && selectedMonth === now.getMonth() && selectedYear === now.getFullYear());
 
+        // Solo recalcular si el periodo realmente cambió (evitar render innecesario al cambiar mes)
+        const periodKey = isCurrentMonth ? `${now.getFullYear()}-${now.getMonth()}` : 'other';
+        if (_lastProyeccionPeriod === periodKey) return;
+        _lastProyeccionPeriod = periodKey;
+
         if (!isCurrentMonth) {
             el.innerHTML = '<div class="empty-state">Proyección disponible solo para el mes actual</div>';
             return;
@@ -3063,9 +3075,17 @@
             refYear  = now.getFullYear();
             refMonth = now.getMonth();
         } else {
+            const periodKey = 'other';
+            if (_lastComparativaPeriod === periodKey) return;
+            _lastComparativaPeriod = periodKey;
             el.innerHTML = '<div class="empty-state">Comparativa disponible para filtros mensuales</div>';
             return;
         }
+
+        // Solo recalcular si el mes de referencia cambió
+        const periodKey = `${refYear}-${refMonth}`;
+        if (_lastComparativaPeriod === periodKey) return;
+        _lastComparativaPeriod = periodKey;
 
         const prevMonth = refMonth === 0 ? 11 : refMonth - 1;
         const prevYear  = refMonth === 0 ? refYear - 1 : refYear;

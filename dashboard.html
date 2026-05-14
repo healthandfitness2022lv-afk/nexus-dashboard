@@ -71,6 +71,24 @@
         .period-btn.active { background: #667eea; color: white; border-color: #667eea; }
         .period-btn:hover { border-color: #667eea; }
 
+        .month-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .month-picker-wrapper select {
+            padding: 7px 10px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        .month-picker-wrapper select:focus { outline: none; border-color: #667eea; }
+        .month-picker-wrapper.active select { border-color: #667eea; background: #f0f2ff; }
+
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
@@ -449,6 +467,10 @@
                 <button class="period-btn active" data-period="month">Este Mes</button>
                 <button class="period-btn" data-period="year">Este Ano</button>
                 <button class="period-btn" data-period="all">Todo</button>
+                <div class="month-picker-wrapper" id="monthPickerWrapper">
+                    <select id="monthSelect"></select>
+                    <select id="yearSelect"></select>
+                </div>
                 <button id="logoutBtn"
                     style="padding:8px 16px; border:2px solid #e74c3c; background:white; color:#e74c3c; border-radius:8px; cursor:pointer; font-weight:500; margin-left:10px;">
                     Logout
@@ -685,10 +707,57 @@
         budgets: [],
         goals: [],
         suscripciones: [],
-        ingresosEsperados: []
+        ingresosEsperados: [],
+        categorias: []   // { nombre, tipo } — tipo: 'gasto' | 'ingreso' | 'ambos'
     };
     let currentPeriod = 'month';
+    // selectedMonth / selectedYear: usados cuando currentPeriod === 'specific'
+    let selectedMonth = new Date().getMonth();   // 0-11
+    let selectedYear  = new Date().getFullYear();
     let charts = {};
+
+    // Una transacción es de ahorro si su categoria empieza con 'Ahorro' (igual que la app Flutter)
+    const isAhorroTx = (t) =>
+        String(t.categoria || '').startsWith('Ahorro');
+
+    // Replica exacta de totalesNetos() de transaction_helpers.dart:
+    // Categorías tipo 'ambos' (ej. Inversión, Otros) netean gastos e ingresos entre sí.
+    // Devuelve { gastos, ingresos, ahorroTx, gastosRealesTx, ingresosTx }
+    const calcTotalesNetos = (transactions) => {
+        const tiposPorNombre = {};
+        allData.categorias.forEach(c => { tiposPorNombre[c.nombre] = c.tipo; });
+
+        const ahorroTx     = transactions.filter(t => isAhorroTx(t) && t.tipo === 'gasto');
+        const noAhorro     = transactions.filter(t => !isAhorroTx(t));
+
+        // Neto por categoría tipo 'ambos': gasto suma, ingreso resta
+        const neto = {};
+        noAhorro.forEach(t => {
+            const tipo = tiposPorNombre[t.categoria] || 'gasto';
+            if (tipo === 'ambos') {
+                neto[t.categoria] = (neto[t.categoria] || 0) +
+                    (t.tipo === 'gasto' ? (Number(t.monto) || 0) : -(Number(t.monto) || 0));
+            }
+        });
+
+        // Gastos puros (no-ambos, no-ahorro) + netos positivos de ambos
+        let gastos = noAhorro
+            .filter(t => t.tipo === 'gasto' && (tiposPorNombre[t.categoria] || 'gasto') !== 'ambos')
+            .reduce((s, t) => s + (Number(t.monto) || 0), 0);
+        Object.values(neto).forEach(v => { if (v > 0) gastos += v; });
+
+        // Ingresos puros (no-ambos) + netos negativos de ambos
+        let ingresos = noAhorro
+            .filter(t => t.tipo === 'ingreso' && (tiposPorNombre[t.categoria] || 'gasto') !== 'ambos')
+            .reduce((s, t) => s + (Number(t.monto) || 0), 0);
+        Object.values(neto).forEach(v => { if (v < 0) ingresos += Math.abs(v); });
+
+        // Arrays para los graficos
+        const gastosRealesTx = noAhorro.filter(t => t.tipo === 'gasto');
+        const ingresosTx     = noAhorro.filter(t => t.tipo === 'ingreso');
+
+        return { gastos, ingresos, ahorroTx, gastosRealesTx, ingresosTx };
+    };
 
     // ============================================================
     // FILTRADO POR PERIODO
@@ -709,15 +778,28 @@
                 return new Date(now.getFullYear(), now.getMonth(), 1);
             case 'year':
                 return new Date(now.getFullYear(), 0, 1);
+            case 'specific':
+                return new Date(selectedYear, selectedMonth, 1);
             case 'all':
             default:
                 return new Date(0);
         }
     };
 
+    const getPeriodEndDate = (period) => {
+        if (period === 'specific') {
+            return new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59, 999);
+        }
+        return new Date(8640000000000000); // infinito
+    };
+
     const filterByPeriod = (transactions, period) => {
         const start = getPeriodStartDate(period);
-        return transactions.filter(t => parseDate(t.fecha) >= start);
+        const end   = getPeriodEndDate(period);
+        return transactions.filter(t => {
+            const d = parseDate(t.fecha);
+            return d >= start && d <= end;
+        });
     };
 
     // Filtrar transacciones para un presupuesto segun su frecuencia y categoria
@@ -749,27 +831,27 @@
     // CALCULO DE ESTADISTICAS
     // ============================================================
     const calcStats = (transactions) => {
-        const ingresos = transactions.filter(t => t.tipo === 'ingreso');
-        const todosGastos = transactions.filter(t => t.tipo === 'gasto');
-        // Gastos reales: gastos cuya categoria NO empieza con 'Ahorro'
-        const gastosReales = todosGastos.filter(t => !String(t.categoria || '').startsWith('Ahorro'));
-        // Transacciones de ahorro: gastos con categoria que empieza con 'Ahorro'
-        const ahorroTx = todosGastos.filter(t => String(t.categoria || '').startsWith('Ahorro'));
+        const { gastos, ingresos, ahorroTx, gastosRealesTx, ingresosTx } = calcTotalesNetos(transactions);
 
-        const totalIngresos      = ingresos.reduce((s, t) => s + (Number(t.monto)||0), 0);
-        const totalGastosReales  = gastosReales.reduce((s, t) => s + (Number(t.monto)||0), 0);
-        const totalAhorro        = ahorroTx.reduce((s, t) => s + (Number(t.monto)||0), 0);
-        const balance            = totalIngresos - totalGastosReales;
+        // balance = ingresos - gastos (igual que la app: balance = totalIngresos - totalGastos - totalAhorro,
+        // pero aquí gastos ya excluye ahorro, así que es equivalente)
+        const totalAhorro = ahorroTx.reduce((s, t) => s + (Number(t.monto)||0), 0);
+        const balance     = ingresos - gastos;
 
         return {
-            ingresos, todosGastos, gastosReales, ahorroTx,
-            totalIngresos, totalGastosReales, totalAhorro, balance,
-            avgIngreso: ingresos.length > 0 ? totalIngresos / ingresos.length : 0,
-            avgGasto: gastosReales.length > 0 ? totalGastosReales / gastosReales.length : 0,
-            maxIngreso: ingresos.length > 0 ? Math.max(...ingresos.map(t => Number(t.monto)||0)) : 0,
-            maxGasto: gastosReales.length > 0 ? Math.max(...gastosReales.map(t => Number(t.monto)||0)) : 0,
+            ingresos: ingresosTx,
+            gastosReales: gastosRealesTx,
+            ahorroTx,
+            totalIngresos: ingresos,
+            totalGastosReales: gastos,
+            totalAhorro,
+            balance,
+            avgIngreso:  ingresosTx.length > 0  ? ingresos / ingresosTx.length  : 0,
+            avgGasto:    gastosRealesTx.length > 0 ? gastos / gastosRealesTx.length : 0,
+            maxIngreso:  ingresosTx.length > 0  ? Math.max(...ingresosTx.map(t => Number(t.monto)||0))    : 0,
+            maxGasto:    gastosRealesTx.length > 0 ? Math.max(...gastosRealesTx.map(t => Number(t.monto)||0)) : 0,
             totalTransacciones: transactions.length,
-            ratioAhorro: totalIngresos > 0 ? ((balance / totalIngresos) * 100).toFixed(1) : '0.0'
+            ratioAhorro: ingresos > 0 ? ((balance / ingresos) * 100).toFixed(1) : '0.0'
         };
     };
 
@@ -840,9 +922,8 @@
             let running = 0;
             sorted.forEach(t => {
                 const key = parseDate(t.fecha).toLocaleDateString('es-CL');
-                const isAhorro = String(t.categoria || '').startsWith('Ahorro');
                 if (t.tipo === 'ingreso') running += Number(t.monto) || 0;
-                else if (t.tipo === 'gasto' && !isAhorro) running -= Number(t.monto) || 0;
+                else if (t.tipo === 'gasto' && !isAhorroTx(t)) running -= Number(t.monto) || 0;
                 dailyMap[key] = running;
             });
             labels = Object.keys(dailyMap);
@@ -863,9 +944,8 @@
             allData.transactions.forEach(t => {
                 const d = parseDate(t.fecha);
                 if (d < firstDayOfPeriod) {
-                    const isAhorro = String(t.categoria || '').startsWith('Ahorro');
                     if (t.tipo === 'ingreso') saldoInicial += Number(t.monto) || 0;
-                    else if (t.tipo === 'gasto' && !isAhorro) saldoInicial -= Number(t.monto) || 0;
+                    else if (t.tipo === 'gasto' && !isAhorroTx(t)) saldoInicial -= Number(t.monto) || 0;
                 }
             });
 
@@ -877,9 +957,8 @@
 
             sorted.forEach(t => {
                 const key = parseDate(t.fecha).toLocaleDateString('es-CL');
-                const isAhorro = String(t.categoria || '').startsWith('Ahorro');
                 if (t.tipo === 'ingreso') running += Number(t.monto) || 0;
-                else if (t.tipo === 'gasto' && !isAhorro) running -= Number(t.monto) || 0;
+                else if (t.tipo === 'gasto' && !isAhorroTx(t)) running -= Number(t.monto) || 0;
                 dailyMap[key] = running;
             });
 
@@ -904,10 +983,10 @@
                     label: labelDataset,
                     data,
                     borderColor: color,
-                    backgroundColor: color.replace(')', ',0.1)').replace('rgb', 'rgba') || 'rgba(102,126,234,0.1)',
-                    borderWidth: 3,
-                    fill: true,
-                    tension: 0.4,
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.3,
                     pointRadius: labels.length > 60 ? 0 : 3,
                     pointBackgroundColor: color,
                     pointBorderColor: 'white',
@@ -1024,13 +1103,15 @@
         });
     };
 
-    // Clasificacion (radar) usando gastos reales
+    // Clasificacion (radar) usando gastos reales (excluye transacciones de ahorro)
     const updateClassificationChart = (gastosReales) => {
         destroyChart('classification');
         const canvasEl = document.getElementById('classificationChart');
         if (!canvasEl) return;
 
-        const totals = { necesario: 0, innecesario: 0, inversion: 0, ahorro: 0 };
+        // Solo clasificaciones de gasto real; 'ahorro' se excluye porque esas transacciones
+        // ya fueron separadas del array gastosReales
+        const totals = { necesario: 0, innecesario: 0, inversion: 0 };
         gastosReales.forEach(t => {
             const cl = (t.clasificacion || '').toLowerCase();
             if (totals.hasOwnProperty(cl)) totals[cl] += Number(t.monto) || 0;
@@ -1040,10 +1121,10 @@
         charts.classification = new Chart(ctx, {
             type: 'radar',
             data: {
-                labels: ['Necesario', 'Innecesario', 'Inversion', 'Ahorro'],
+                labels: ['Necesario', 'Innecesario', 'Inversion'],
                 datasets: [{
                     label: 'Gastos por Clasificacion',
-                    data: [totals.necesario, totals.innecesario, totals.inversion, totals.ahorro],
+                    data: [totals.necesario, totals.innecesario, totals.inversion],
                     borderColor: chartColors.primary,
                     backgroundColor: 'rgba(102,126,234,0.2)',
                     borderWidth: 2,
@@ -1071,10 +1152,9 @@
             const d = parseDate(t.fecha);
             const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
             if (!monthly[key]) monthly[key] = { ingreso: 0, gasto: 0, ahorro: 0 };
-            const isAhorro = String(t.categoria || '').startsWith('Ahorro');
             if (t.tipo === 'ingreso') {
                 monthly[key].ingreso += Number(t.monto) || 0;
-            } else if (isAhorro) {
+            } else if (isAhorroTx(t)) {
                 monthly[key].ahorro += Number(t.monto) || 0;
             } else {
                 monthly[key].gasto += Number(t.monto) || 0;
@@ -1130,7 +1210,7 @@
         const catData = {};
         gastosReales.forEach(t => {
             const cat = t.categoria || 'Sin Categoria';
-            if (!catData[cat]) catData[cat] = { necesario:0, innecesario:0, inversion:0, ahorro:0 };
+            if (!catData[cat]) catData[cat] = { necesario:0, innecesario:0, inversion:0 };
             const cl = (t.clasificacion || '').toLowerCase();
             if (catData[cat].hasOwnProperty(cl)) catData[cat][cl] += Number(t.monto) || 0;
         });
@@ -1146,8 +1226,7 @@
                 datasets: [
                     { label: 'Necesario',  data: categories.map(c => catData[c].necesario),  backgroundColor: '#27ae60' },
                     { label: 'Innecesario',data: categories.map(c => catData[c].innecesario), backgroundColor: '#e74c3c' },
-                    { label: 'Inversion',  data: categories.map(c => catData[c].inversion),  backgroundColor: '#3498db' },
-                    { label: 'Ahorro',     data: categories.map(c => catData[c].ahorro),     backgroundColor: '#9b59b6' }
+                    { label: 'Inversion',  data: categories.map(c => catData[c].inversion),  backgroundColor: '#3498db' }
                 ]
             },
             options: {
@@ -1254,7 +1333,7 @@
 
             // Gasto neto = gastos - ingresos de esa categoria en el periodo del presupuesto, clamped a 0
             const txPeriod = filterForBudget(allTransactions, freq, cat);
-            const gastado  = txPeriod.filter(t => t.tipo === 'gasto' && !String(t.categoria||'').startsWith('Ahorro'))
+            const gastado  = txPeriod.filter(t => t.tipo === 'gasto' && !isAhorroTx(t))
                                      .reduce((s, t) => s + (Number(t.monto)||0), 0);
             const ingresosCat = txPeriod.filter(t => t.tipo === 'ingreso')
                                         .reduce((s, t) => s + (Number(t.monto)||0), 0);
@@ -1363,33 +1442,54 @@
 
     // Deudas: calcula saldoPendiente segun reglas de negocio
     const calcSaldoDeuda = (debt) => {
-        const montoTotal  = Number(debt.montoTotal) || 0;
-        const abonos      = Array.isArray(debt.abonos)      ? debt.abonos      : [];
-        const cargos      = Array.isArray(debt.cargos)      ? debt.cargos      : [];
-        const cuotas      = Array.isArray(debt.cuotasFijas) ? debt.cuotasFijas : [];
+        const montoTotal = Number(debt.montoTotal) || 0;
+        const abonos     = Array.isArray(debt.abonos)      ? debt.abonos      : [];
+        const cargos     = Array.isArray(debt.cargos)      ? debt.cargos      : [];
+        const cuotas     = Array.isArray(debt.cuotasFijas) ? debt.cuotasFijas : [];
 
-        // totalAbonado = suma de (monto - intereses) de cada abono (montoBase)
+        // totalAbonado = suma de montoBase (monto - intereses) de cada abono
         const totalAbonado = abonos.reduce((s, a) => {
-            const monto     = Number(a.monto) || 0;
+            const monto     = Number(a.monto)     || 0;
             const intereses = Number(a.intereses) || 0;
             return s + (monto - intereses);
         }, 0);
 
+        const totalPagadoConIntereses = abonos.reduce((s, a) => s + (Number(a.monto) || 0), 0);
+
         let saldo;
         if (montoTotal === 0) {
-            // Cuenta corriente
+            // Cuenta corriente: cargos - abonos
             const totalCargos = cargos.reduce((s, c) => s + (Number(c.monto)||0), 0);
             saldo = totalCargos - totalAbonado;
         } else if (cuotas.length > 0) {
-            // Credito con cuotas fijas: sumar cuotas pendientes (no pagadas)
-            const pendientes = cuotas.filter(c => !c.pagada && !c.pagado);
+            // Deuda con cuotas fijas (modelo nuevo):
+            // Una cuota está pagada si existe un abono con numeroCuota == c.numero
+            const cuotasPagadasNums = new Set(
+                abonos.filter(a => a.numeroCuota != null).map(a => Number(a.numeroCuota))
+            );
+            const pendientes = cuotas.filter(c => !cuotasPagadasNums.has(Number(c.numero)));
             saldo = pendientes.reduce((s, c) => s + (Number(c.monto)||0), 0);
         } else {
-            // Deuda simple
+            // Deuda fija sin cuotas
             saldo = montoTotal - totalAbonado;
         }
 
-        return { saldo: Math.max(0, saldo), totalAbonado, montoTotal };
+        // Progreso: para cuotas usamos ratio pagadas/total; para deuda fija usamos montos
+        const nCuotasPagadas  = cuotas.length > 0
+            ? abonos.filter(a => a.numeroCuota != null).length
+            : null;
+        const nCuotasTotal    = cuotas.length > 0 ? cuotas.length : null;
+
+        return {
+            saldo: Math.max(0, saldo),
+            totalAbonado,
+            totalPagadoConIntereses,
+            montoTotal,
+            nCuotasPagadas,
+            nCuotasTotal,
+            cuotas,
+            abonos
+        };
     };
 
     const updateDebtsList = () => {
@@ -1399,24 +1499,62 @@
         }
 
         const html = allData.debts.map(debt => {
-            const { saldo, totalAbonado, montoTotal } = calcSaldoDeuda(debt);
+            const { saldo, totalAbonado, totalPagadoConIntereses, montoTotal,
+                    nCuotasPagadas, nCuotasTotal, cuotas, abonos } = calcSaldoDeuda(debt);
             const completada = saldo <= 0;
-            const pct        = montoTotal > 0 ? Math.min((totalAbonado / montoTotal) * 100, 100) : (completada ? 100 : 0);
             const emoji      = debt.emoji || '💳';
             const cat        = debt.categoria || '';
-            const tipo       = debt.tipo || '';
+
+            // Progreso visual
+            let pct;
+            if (nCuotasTotal > 0) {
+                pct = Math.min((nCuotasPagadas / nCuotasTotal) * 100, 100);
+            } else if (montoTotal > 0) {
+                pct = Math.min((totalAbonado / montoTotal) * 100, 100);
+            } else {
+                pct = completada ? 100 : 0;
+            }
+
+            // Próxima cuota pendiente (solo para deudas con cuotas)
+            let proximaCuotaHtml = '';
+            if (nCuotasTotal > 0 && !completada) {
+                const cuotasPagadasNums = new Set(
+                    abonos.filter(a => a.numeroCuota != null).map(a => Number(a.numeroCuota))
+                );
+                const pendientes = cuotas
+                    .filter(c => !cuotasPagadasNums.has(Number(c.numero)))
+                    .sort((a, b) => new Date(a.fechaVencimiento) - new Date(b.fechaVencimiento));
+                if (pendientes.length > 0) {
+                    const prox = pendientes[0];
+                    const fechaVenc = new Date(prox.fechaVencimiento);
+                    const hoy = new Date();
+                    const vencida = fechaVenc < hoy;
+                    const fechaStr = fechaVenc.toLocaleDateString('es-CL');
+                    proximaCuotaHtml = `
+                        <div style="font-size:11px; margin-top:6px; opacity:0.9;">
+                            ${vencida ? '⚠️' : '📅'} Cuota ${prox.numero}: ${fechaStr} — ${formatNum(Number(prox.monto)||0)}
+                        </div>`;
+                }
+            }
+
+            // Label de cuotas
+            const cuotasLabel = nCuotasTotal > 0
+                ? `<span style="font-size:11px; opacity:0.8;">${nCuotasPagadas}/${nCuotasTotal} cuotas pagadas</span>`
+                : '';
 
             return `
                 <div class="debt-card ${completada ? 'completada' : ''}">
-                    <div class="desc">${emoji} ${debt.descripcion || 'Deuda'}${completada ? ' (Completada)' : ''}</div>
-                    ${cat || tipo ? `<div style="font-size:12px; opacity:0.8; margin-bottom:6px;">${cat}${tipo ? ' | ' + tipo : ''}</div>` : ''}
-                    <div class="amount">${formatNum(saldo)} pendiente</div>
-                    <div style="font-size:12px; margin-bottom:8px; opacity:0.85;">
-                        Abonado: ${formatNum(totalAbonado)}${montoTotal > 0 ? ' / Total: ' + formatNum(montoTotal) : ''}
+                    <div class="desc">${emoji} ${debt.descripcion || 'Deuda'}${completada ? ' ✓' : ''}</div>
+                    ${cat ? `<div style="font-size:12px; opacity:0.8; margin-bottom:4px;">${cat}</div>` : ''}
+                    <div class="amount">${completada ? 'Pagada' : formatNum(saldo) + ' pendiente'}</div>
+                    <div style="font-size:12px; margin-bottom:6px; opacity:0.85; display:flex; justify-content:space-between; align-items:center;">
+                        <span>Abonado: ${formatNum(totalAbonado)}${montoTotal > 0 ? ' / ' + formatNum(montoTotal) : ''}</span>
+                        ${cuotasLabel}
                     </div>
                     <div class="progress-debt">
-                        <div class="progress-debt-fill" style="width:${pct}%"></div>
+                        <div class="progress-debt-fill" style="width:${pct.toFixed(0)}%"></div>
                     </div>
+                    ${proximaCuotaHtml}
                 </div>`;
         }).join('');
 
@@ -1597,8 +1735,8 @@
     // Guardamos los unsubscribe de cada listener para poder cancelarlos al hacer logout
     let realtimeUnsubs = [];
 
-    // Estado de carga inicial: esperamos que las 6 colecciones hayan respondido al menos una vez
-    const realtimeReady = { tx: false, metas: false, presup: false, deudas: false, subs: false, ingEsp: false };
+    // Estado de carga inicial: esperamos que las 7 colecciones hayan respondido al menos una vez
+    const realtimeReady = { tx: false, metas: false, presup: false, deudas: false, subs: false, ingEsp: false, cats: false };
     let dashboardVisible = false;
 
     function checkAndShowDashboard() {
@@ -1782,6 +1920,43 @@
                 checkAndShowDashboard();
             });
         realtimeUnsubs.push(unsubIngEsp);
+
+        // --- CATEGORIAS ---
+        const unsubCats = userRef.collection('categorias')
+            .onSnapshot(snap => {
+                // Combinar categorias del usuario con las default (en JS usamos las default como fallback)
+                const defaultCats = [
+                    { nombre: 'Inversión', tipo: 'ambos' },
+                    { nombre: 'Otros',     tipo: 'ambos' },
+                    // el resto son 'gasto' o 'ingreso' por defecto — no necesitamos listarlos todos
+                    // porque el fallback en calcTotalesNetos ya asume 'gasto' si no encuentra la cat
+                ];
+                const userCats = snap.docs.map(doc => {
+                    const d = doc.data();
+                    return { nombre: d.nombre || '', tipo: d.tipo || 'gasto' };
+                });
+                // Merge: las categorias del usuario sobreescriben las default por nombre
+                const merged = [...defaultCats];
+                userCats.forEach(uc => {
+                    const idx = merged.findIndex(c => c.nombre === uc.nombre);
+                    if (idx >= 0) merged[idx] = uc;
+                    else merged.push(uc);
+                });
+                allData.categorias = merged;
+                realtimeReady.cats = true;
+                checkAndShowDashboard();
+                if (dashboardVisible) updateDashboard();
+            }, err => {
+                console.error('Error categorias:', err);
+                // Si falla, usar solo defaults para no bloquear el dashboard
+                allData.categorias = [
+                    { nombre: 'Inversión', tipo: 'ambos' },
+                    { nombre: 'Otros',     tipo: 'ambos' },
+                ];
+                realtimeReady.cats = true;
+                checkAndShowDashboard();
+            });
+        realtimeUnsubs.push(unsubCats);
     }
 
     // ============================================================
@@ -1861,15 +2036,65 @@
         month: 'Este Mes', year: 'Este Ano', all: 'Todo'
     };
 
+    const monthNames = [
+        'Enero','Febrero','Marzo','Abril','Mayo','Junio',
+        'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'
+    ];
+
+    // Inicializar selects de mes y año
+    const initMonthPicker = () => {
+        const monthSel = document.getElementById('monthSelect');
+        const yearSel  = document.getElementById('yearSelect');
+        if (!monthSel || !yearSel) return;
+
+        monthSel.innerHTML = monthNames.map((m, i) =>
+            `<option value="${i}" ${i === selectedMonth ? 'selected' : ''}>${m}</option>`
+        ).join('');
+
+        const currentYear = new Date().getFullYear();
+        yearSel.innerHTML = '';
+        for (let y = currentYear - 3; y <= currentYear + 1; y++) {
+            yearSel.innerHTML += `<option value="${y}" ${y === selectedYear ? 'selected' : ''}>${y}</option>`;
+        }
+    };
+
+    const applyMonthPicker = () => {
+        const monthSel = document.getElementById('monthSelect');
+        const yearSel  = document.getElementById('yearSelect');
+        const wrapper  = document.getElementById('monthPickerWrapper');
+        if (!monthSel || !yearSel) return;
+
+        selectedMonth = parseInt(monthSel.value);
+        selectedYear  = parseInt(yearSel.value);
+        currentPeriod = 'specific';
+
+        document.querySelectorAll('.period-btn[data-period]').forEach(b => b.classList.remove('active'));
+        if (wrapper) wrapper.classList.add('active');
+
+        const label = `${monthNames[selectedMonth]} ${selectedYear}`;
+        setText('periodDisplay', label);
+        updateDashboard();
+    };
+
     document.querySelectorAll('.period-btn[data-period]').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.period-btn[data-period]').forEach(b => b.classList.remove('active'));
+            const wrapper = document.getElementById('monthPickerWrapper');
+            if (wrapper) wrapper.classList.remove('active');
             btn.classList.add('active');
             currentPeriod = btn.dataset.period;
             setText('periodDisplay', periodLabels[currentPeriod] || currentPeriod);
             updateDashboard();
         });
     });
+
+    // Conectar selects de mes/año
+    const monthSel = document.getElementById('monthSelect');
+    const yearSel  = document.getElementById('yearSelect');
+    if (monthSel) monthSel.addEventListener('change', applyMonthPicker);
+    if (yearSel)  yearSel.addEventListener('change',  applyMonthPicker);
+
+    initMonthPicker();
 
     document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', () => {

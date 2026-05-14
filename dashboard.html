@@ -594,6 +594,56 @@
             font-size: 12px;
         }
 
+        /* ── Semáforo de salud financiera ───────────────────────── */
+        .health-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 22px 28px;
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 28px;
+            flex-wrap: wrap;
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+        .health-gauge-wrap {
+            position: relative;
+            width: 130px;
+            height: 80px;
+            flex-shrink: 0;
+        }
+        .health-gauge-wrap canvas { display: block; }
+        .health-score-label {
+            position: absolute;
+            bottom: 0; left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            white-space: nowrap;
+        }
+        .health-score-num  { font-size: 28px; font-weight: 900; line-height: 1; }
+        .health-score-sub  { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; }
+        .health-title      { font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 2px; }
+        .health-verdict    { font-size: 13px; color: var(--text-sub); margin-bottom: 10px; }
+        .health-factors    { display: flex; flex-wrap: wrap; gap: 8px; }
+        .health-factor {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--bg-surface);
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 12px;
+            color: var(--text-sub);
+            transition: background 0.3s;
+        }
+        .health-factor .dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .health-factor .fval { font-weight: 700; color: var(--text-main); margin-left: 4px; }
+
         /* ── Empty state ─────────────────────────────────────────── */
         .empty-state { text-align: center; color: var(--text-muted); padding: 20px; font-size: 14px; }
 
@@ -696,6 +746,22 @@
             </div>
         </div>
 
+        <!-- SEMAFORO DE SALUD FINANCIERA -->
+        <div class="health-card" id="healthCard">
+            <div class="health-gauge-wrap">
+                <canvas id="healthGauge" width="130" height="80"></canvas>
+                <div class="health-score-label">
+                    <div class="health-score-num" id="healthScoreNum">—</div>
+                    <div class="health-score-sub">/ 100</div>
+                </div>
+            </div>
+            <div style="flex:1; min-width:200px;">
+                <div class="health-title" id="healthTitle">Salud Financiera</div>
+                <div class="health-verdict" id="healthVerdict">Calculando...</div>
+                <div class="health-factors" id="healthFactors"></div>
+            </div>
+        </div>
+
         <!-- GRAFICO EVOLUCION SALDO -->
         <div class="grid full">
             <div class="card">
@@ -747,22 +813,18 @@
             </div>
         </div>
 
-        <!-- PRESUPUESTOS + METAS -->
-        <div class="grid">
+        <!-- PRESUPUESTOS (full width) -->
+        <div class="grid full">
             <div class="card">
                 <h2>Presupuestos</h2>
                 <div id="budgetsList"><div class="loading-spinner">Cargando presupuestos...</div></div>
-            </div>
-            <div class="card">
-                <h2>Metas de Ahorro</h2>
-                <div id="goalsList"><div class="loading-spinner">Cargando metas...</div></div>
             </div>
         </div>
 
         <!-- AHORRO + DEUDAS -->
         <div class="grid">
             <div class="card">
-                <h2>Ahorro del Periodo</h2>
+                <h2>Ahorro & Metas</h2>
                 <div id="savingsList"><div class="loading-spinner">Cargando ahorro...</div></div>
             </div>
             <div class="card">
@@ -1121,7 +1183,6 @@
         currentFilteredTx = filtered;
         renderFilteredTx();
         updateBudgetsList(allData.transactions);
-        updateGoalsList();
         updateSavingsList(stats.ahorroTx);
         updateDebtsList();
         updateSuscripcionesList();
@@ -1129,6 +1190,7 @@
         updateInsights(filtered, stats);
         updateProyeccion(filtered, stats);
         updateComparativa(stats);
+        updateHealthCard(stats);
     };
 
     // ============================================================
@@ -1339,40 +1401,48 @@
         });
     };
 
-    // Clasificacion (radar) usando gastos reales (excluye transacciones de ahorro)
+    // Clasificacion: barras horizontales (necesario / innecesario / inversión)
     const updateClassificationChart = (gastosReales) => {
         destroyChart('classification');
         const canvasEl = document.getElementById('classificationChart');
         if (!canvasEl) return;
 
-        // Solo clasificaciones de gasto real; 'ahorro' se excluye porque esas transacciones
-        // ya fueron separadas del array gastosReales
         const totals = { necesario: 0, innecesario: 0, inversion: 0 };
         gastosReales.forEach(t => {
             const cl = (t.clasificacion || '').toLowerCase();
             if (totals.hasOwnProperty(cl)) totals[cl] += Number(t.monto) || 0;
         });
 
+        const total = totals.necesario + totals.innecesario + totals.inversion || 1;
+
         const ctx = canvasEl.getContext('2d');
         charts.classification = new Chart(ctx, {
-            type: 'radar',
+            type: 'bar',
             data: {
-                labels: ['Necesario', 'Innecesario', 'Inversion'],
+                labels: ['Necesario', 'Innecesario', 'Inversión'],
                 datasets: [{
-                    label: 'Gastos por Clasificacion',
+                    label: 'Monto',
                     data: [totals.necesario, totals.innecesario, totals.inversion],
-                    borderColor: chartColors.primary,
-                    backgroundColor: 'rgba(102,126,234,0.2)',
-                    borderWidth: 2,
-                    pointBackgroundColor: chartColors.primary,
-                    pointBorderColor: 'white',
-                    pointBorderWidth: 2
+                    backgroundColor: [chartColors.success, chartColors.danger, chartColors.info],
+                    borderRadius: 8,
+                    borderSkipped: false
                 }]
             },
             options: {
+                indexAxis: 'y',
                 responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { position: 'top' }, datalabels: { display: false } },
-                scales: { r: { beginAtZero: true, ticks: { callback: v => formatNum(v) } } }
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        color: 'white',
+                        font: { weight: 'bold', size: 11 },
+                        formatter: v => v > 0 ? formatNum(v) + ' (' + (v/total*100).toFixed(0) + '%)' : ''
+                    }
+                },
+                scales: {
+                    x: { beginAtZero: true, ticks: { callback: v => formatNum(v) } },
+                    y: { ticks: { font: { weight: '600' } } }
+                }
             }
         });
     };
@@ -1645,35 +1715,68 @@
 
     // Ahorro del periodo: transacciones con categoria que empieza con 'Ahorro'
     const updateSavingsList = (ahorroTx) => {
-        if (ahorroTx.length === 0) {
-            setHTML('savingsList', '<div class="empty-state">Sin transacciones de ahorro en este periodo</div>');
-            return;
-        }
-
         const total = ahorroTx.reduce((s, t) => s + (Number(t.monto)||0), 0);
 
-        const headerHtml = `
+        // Bloque resumen ahorro
+        const headerHtml = total > 0 ? `
             <div class="saving-card">
                 <div>
                     <div style="font-size:12px; opacity:0.8;">Total ahorrado en el periodo</div>
                     <div style="font-size:24px; font-weight:bold;">${formatNum(total)}</div>
                 </div>
                 <div style="font-size:32px;">🏦</div>
-            </div>`;
+            </div>` : '';
 
-        const txHtml = ahorroTx.slice(0, 8).map(t => {
-            const fecha = parseDate(t.fecha).toLocaleDateString('es-CL');
-            return `
-                <div class="suscripcion-item">
-                    <div>
-                        <div style="font-weight:600;">${t.descripcion || t.categoria || 'Ahorro'}</div>
-                        <div style="font-size:12px; color:#999;">${fecha} | ${t.categoria || ''}</div>
-                    </div>
-                    <div style="font-weight:600; color:#764ba2;">${formatNum(Number(t.monto)||0)}</div>
-                </div>`;
-        }).join('');
+        const txHtml = ahorroTx.length > 0
+            ? ahorroTx.slice(0, 6).map(t => {
+                const fecha = parseDate(t.fecha).toLocaleDateString('es-CL');
+                return `
+                    <div class="suscripcion-item">
+                        <div>
+                            <div style="font-weight:600;">${t.descripcion || t.categoria || 'Ahorro'}</div>
+                            <div style="font-size:12px; color:var(--text-muted);">${fecha} | ${t.categoria || ''}</div>
+                        </div>
+                        <div style="font-weight:600; color:var(--saving);">${formatNum(Number(t.monto)||0)}</div>
+                    </div>`;
+            }).join('')
+            : '<div class="empty-state">Sin transacciones de ahorro en este periodo</div>';
 
-        setHTML('savingsList', headerHtml + txHtml);
+        // Bloque metas de ahorro
+        const now = new Date();
+        let metasHtml = '';
+        if (allData.goals && allData.goals.length > 0) {
+            metasHtml = `<h3 style="font-size:12px;color:var(--text-muted);margin:16px 0 8px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;">Metas de ahorro</h3>`;
+            metasHtml += allData.goals.map(goal => {
+                const objetivo = Number(goal.montoObjetivo) || 0;
+                const actual   = Number(goal.montoActual)   || 0;
+                const pct      = objetivo > 0 ? Math.min((actual / objetivo) * 100, 100) : 0;
+                const emoji    = goal.emoji || '🎯';
+                let diasRest   = '';
+                if (goal.fechaLimite) {
+                    const fl   = parseDate(goal.fechaLimite);
+                    const diff = Math.ceil((fl - now) / (1000 * 60 * 60 * 24));
+                    diasRest   = diff > 0
+                        ? `<span style="font-size:11px; color:var(--text-muted);">${diff} días restantes</span>`
+                        : `<span style="font-size:11px; color:var(--danger);">Vencida</span>`;
+                }
+                return `
+                    <div style="margin-bottom:14px; padding:12px; background:var(--bg-surface); border-radius:8px; transition:background 0.3s;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                            <span style="font-weight:700; color:var(--text-main);">${emoji} ${goal.nombre || 'Meta'}</span>
+                            <span style="color:var(--primary); font-weight:700;">${pct.toFixed(1)}%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width:${pct}%;"></div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted); margin-top:4px;">
+                            <span>${formatNum(actual)} / ${formatNum(objetivo)}</span>
+                            ${diasRest}
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        setHTML('savingsList', headerHtml + txHtml + metasHtml);
     };
 
     // Deudas: calcula saldoPendiente segun reglas de negocio
@@ -2357,6 +2460,175 @@
             updateBalanceChart(filtered);
         });
     }
+
+    // ============================================================
+    // SEMAFORO DE SALUD FINANCIERA
+    // ============================================================
+    let healthGaugeChart = null;
+
+    const calcHealthScore = (stats) => {
+        const factors = [];
+        let score = 0;
+
+        // 1. Ratio de ahorro (0-30 pts)
+        //    >= 20% → 30, 10-20% → 20, 0-10% → 10, negativo → 0
+        const ratioAhorro = stats.totalIngresos > 0
+            ? (stats.totalAhorro / stats.totalIngresos) * 100 : 0;
+        const ptAhorro = ratioAhorro >= 20 ? 30 : ratioAhorro >= 10 ? 20 : ratioAhorro > 0 ? 10 : 0;
+        score += ptAhorro;
+        factors.push({
+            label: 'Ratio ahorro',
+            value: ratioAhorro.toFixed(1) + '%',
+            pts: ptAhorro,
+            max: 30,
+            color: ptAhorro >= 25 ? '#27ae60' : ptAhorro >= 15 ? '#f39c12' : '#e74c3c'
+        });
+
+        // 2. Balance positivo (0-25 pts)
+        const ptBalance = stats.balance > 0 ? 25 : stats.balance === 0 ? 10 : 0;
+        score += ptBalance;
+        factors.push({
+            label: 'Balance',
+            value: stats.balance >= 0 ? 'Positivo' : 'Negativo',
+            pts: ptBalance,
+            max: 25,
+            color: ptBalance >= 20 ? '#27ae60' : ptBalance >= 10 ? '#f39c12' : '#e74c3c'
+        });
+
+        // 3. Gastos innecesarios (0-20 pts)
+        //    < 10% del total → 20, 10-30% → 10, > 30% → 0
+        const innecesario = stats.gastosReales.filter(t =>
+            (t.clasificacion || '').toLowerCase() === 'innecesario'
+        ).reduce((s, t) => s + (Number(t.monto)||0), 0);
+        const pctInnec = stats.totalGastosReales > 0
+            ? (innecesario / stats.totalGastosReales) * 100 : 0;
+        const ptInnec = pctInnec < 10 ? 20 : pctInnec < 30 ? 10 : 0;
+        score += ptInnec;
+        factors.push({
+            label: 'Gastos innecesarios',
+            value: pctInnec.toFixed(1) + '%',
+            pts: ptInnec,
+            max: 20,
+            color: ptInnec >= 15 ? '#27ae60' : ptInnec >= 8 ? '#f39c12' : '#e74c3c'
+        });
+
+        // 4. Cumplimiento de presupuestos (0-15 pts)
+        let ptPresup = 15;
+        if (allData.budgets && allData.budgets.length > 0) {
+            const now = new Date();
+            const mesStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            let superados = 0;
+            allData.budgets.forEach(b => {
+                const txCat = allData.transactions.filter(t => {
+                    const d = parseDate(t.fecha);
+                    return d >= mesStart && (t.categoria||'').toLowerCase() === (b.categoria||'').toLowerCase()
+                        && t.tipo === 'gasto' && !isAhorroTx(t);
+                });
+                const gastado = txCat.reduce((s, t) => s + (Number(t.monto)||0), 0);
+                if (gastado > (Number(b.limite)||0)) superados++;
+            });
+            const pctSuperados = superados / allData.budgets.length;
+            ptPresup = pctSuperados === 0 ? 15 : pctSuperados < 0.5 ? 8 : 0;
+        }
+        score += ptPresup;
+        factors.push({
+            label: 'Presupuestos',
+            value: ptPresup === 15 ? 'Bajo control' : ptPresup === 8 ? 'Algunos excedidos' : 'Excedidos',
+            pts: ptPresup,
+            max: 15,
+            color: ptPresup >= 12 ? '#27ae60' : ptPresup >= 6 ? '#f39c12' : '#e74c3c'
+        });
+
+        // 5. Progreso en metas (0-10 pts)
+        let ptMetas = 0;
+        if (allData.goals && allData.goals.length > 0) {
+            const avgProg = allData.goals.reduce((s, g) => {
+                const obj = Number(g.montoObjetivo)||0;
+                const act = Number(g.montoActual)||0;
+                return s + (obj > 0 ? Math.min(act/obj, 1) : 0);
+            }, 0) / allData.goals.length;
+            ptMetas = avgProg >= 0.5 ? 10 : avgProg >= 0.2 ? 5 : 2;
+        }
+        score += ptMetas;
+        factors.push({
+            label: 'Metas de ahorro',
+            value: allData.goals && allData.goals.length > 0
+                ? (allData.goals.reduce((s,g)=> s + (Number(g.montoObjetivo)>0 ? Math.min(Number(g.montoActual)/Number(g.montoObjetivo),1) : 0),0) / allData.goals.length * 100).toFixed(0) + '% avg'
+                : 'Sin metas',
+            pts: ptMetas,
+            max: 10,
+            color: ptMetas >= 8 ? '#27ae60' : ptMetas >= 4 ? '#f39c12' : '#e74c3c'
+        });
+
+        return { score: Math.min(Math.round(score), 100), factors };
+    };
+
+    const getHealthLabel = (score) => {
+        if (score >= 85) return { label: 'Excelente 🏆',   color: '#27ae60' };
+        if (score >= 70) return { label: 'Muy buena 😊',   color: '#2ecc71' };
+        if (score >= 55) return { label: 'Buena 👍',        color: '#f39c12' };
+        if (score >= 40) return { label: 'Regular ⚠️',     color: '#e67e22' };
+        return                   { label: 'Necesita atención 🚨', color: '#e74c3c' };
+    };
+
+    const updateHealthCard = (stats) => {
+        const { score, factors } = calcHealthScore(stats);
+        const { label, color } = getHealthLabel(score);
+
+        // Score number
+        const numEl = document.getElementById('healthScoreNum');
+        if (numEl) { numEl.textContent = score; numEl.style.color = color; }
+        setText('healthTitle', 'Salud Financiera');
+
+        // Verdict
+        const verdicts = {
+            Excelente: 'Tus finanzas están en óptimas condiciones. ¡Sigue así!',
+            'Muy buena': 'Muy buen manejo financiero. Pequeños ajustes y llegas al top.',
+            Buena: 'Vas bien, pero hay margen de mejora en algunos factores.',
+            Regular: 'Atención: algunos indicadores están en zona de riesgo.',
+            'Necesita atención': 'Revisa urgente tus gastos y presupuestos.'
+        };
+        const key = Object.keys(verdicts).find(k => label.startsWith(k)) || 'Regular';
+        setText('healthVerdict', verdicts[key]);
+
+        // Factors chips
+        const factorsEl = document.getElementById('healthFactors');
+        if (factorsEl) {
+            factorsEl.innerHTML = factors.map(f => `
+                <div class="health-factor">
+                    <span class="dot" style="background:${f.color};"></span>
+                    <span>${f.label}:</span>
+                    <span class="fval">${f.value}</span>
+                    <span style="font-size:10px; color:var(--text-muted);">(${f.pts}/${f.max})</span>
+                </div>`).join('');
+        }
+
+        // Gauge (half-donut)
+        const canvas = document.getElementById('healthGauge');
+        if (!canvas) return;
+        if (healthGaugeChart) { healthGaugeChart.destroy(); healthGaugeChart = null; }
+
+        const ctx = canvas.getContext('2d');
+        // Remaining arc = grey
+        healthGaugeChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [score, 100 - score],
+                    backgroundColor: [color, 'rgba(180,180,180,0.2)'],
+                    borderWidth: 0,
+                    circumference: 180,
+                    rotation: -90
+                }]
+            },
+            options: {
+                responsive: false,
+                cutout: '72%',
+                plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { display: false } },
+                animation: { duration: 700, easing: 'easeOutQuart' }
+            }
+        });
+    };
 
     // ============================================================
     // DARK MODE TOGGLE

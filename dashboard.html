@@ -886,10 +886,27 @@
                 </div>
 
                 <div id="trends" class="tab-content">
-                    <h3>Tendencias Mensuales</h3>
-                    <div class="chart-container tall">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                        <h3 style="margin:0;">Tendencias Mensuales + Proyección</h3>
+                        <div style="display:flex;gap:6px;">
+                            <button class="filter-chip active" id="trendTypeLines" onclick="setTrendType('line')">Líneas</button>
+                            <button class="filter-chip" id="trendTypeBars" onclick="setTrendType('bar')">Barras</button>
+                        </div>
+                    </div>
+                    <div class="chart-container tall" style="overflow-x:auto;">
                         <canvas id="trendChart"></canvas>
                     </div>
+                    <!-- Leyenda -->
+                    <div style="display:flex;gap:14px;flex-wrap:wrap;margin:8px 0 16px;font-size:12px;color:var(--text-sub);">
+                        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#27ae60;margin-right:4px;"></span>Ingresos</span>
+                        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#e74c3c;margin-right:4px;"></span>Gastos</span>
+                        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#9b59b6;margin-right:4px;"></span>Ahorro</span>
+                        <span><span style="display:inline-block;width:28px;height:2px;background:#667eea;vertical-align:middle;margin-right:4px;border-top:2px dashed #667eea;"></span>Proyección ✨</span>
+                    </div>
+                    <!-- Cards resumen mensual scrolleables -->
+                    <div id="mesResumenScroll" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;"></div>
+                    <!-- Tabla histórica por categoría -->
+                    <div id="tablaHistorica" style="margin-top:18px;overflow-x:auto;"></div>
                 </div>
 
                 <div id="comparison" class="tab-content">
@@ -1355,8 +1372,10 @@
             catTotals[cat] = (catTotals[cat] || 0) + (Number(t.monto) || 0);
         });
 
-        const labels = Object.keys(catTotals);
-        const data   = Object.values(catTotals);
+        // Ordenar de mayor a menor antes de armar los arrays
+        const sorted = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
+        const labels = sorted.map(e => e[0]);
+        const data   = sorted.map(e => e[1]);
 
         if (totalAhorro > 0) {
             labels.push('Ahorro');
@@ -1447,64 +1466,273 @@
         });
     };
 
-    // Tendencias mensuales (usa TODAS las transacciones historicas)
+    // ── TENDENCIAS: tipo de gráfico (lines/bar) ────────────────────
+    let trendChartType = 'line';
+    const setTrendType = (type) => {
+        trendChartType = type;
+        document.getElementById('trendTypeLines').classList.toggle('active', type === 'line');
+        document.getElementById('trendTypeBars').classList.toggle('active', type === 'bar');
+        updateTrendChart(allData.transactions);
+    };
+
+    // Tendencias mensuales con proyección (usa TODAS las transacciones historicas)
     const updateTrendChart = (transactions) => {
         destroyChart('trend');
         const canvasEl = document.getElementById('trendChart');
         if (!canvasEl) return;
 
+        const now = new Date();
+        const nowKey = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+
+        // Acumular por mes
         const monthly = {};
         transactions.forEach(t => {
             const d = parseDate(t.fecha);
             const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
             if (!monthly[key]) monthly[key] = { ingreso: 0, gasto: 0, ahorro: 0 };
-            if (t.tipo === 'ingreso') {
-                monthly[key].ingreso += Number(t.monto) || 0;
-            } else if (isAhorroTx(t)) {
-                monthly[key].ahorro += Number(t.monto) || 0;
-            } else {
-                monthly[key].gasto += Number(t.monto) || 0;
-            }
+            if (t.tipo === 'ingreso')      monthly[key].ingreso += Number(t.monto) || 0;
+            else if (isAhorroTx(t))        monthly[key].ahorro  += Number(t.monto) || 0;
+            else                           monthly[key].gasto   += Number(t.monto) || 0;
         });
+
+        // Proyección: añadir los 2 meses siguientes al actual
+        const proyKeys = [];
+        for (let m = 1; m <= 2; m++) {
+            const projDate = new Date(now.getFullYear(), now.getMonth() + m, 1);
+            const k = projDate.getFullYear() + '-' + String(projDate.getMonth()+1).padStart(2,'0');
+            if (!monthly[k]) {
+                // Promedio de los 3 meses anteriores reales
+                const keys3 = Object.keys(monthly).filter(k2 => k2 < nowKey).sort().slice(-3);
+                if (keys3.length > 0) {
+                    const avgIng = keys3.reduce((s,k2) => s + monthly[k2].ingreso, 0) / keys3.length;
+                    const avgGas = keys3.reduce((s,k2) => s + monthly[k2].gasto,   0) / keys3.length;
+                    const avgAho = keys3.reduce((s,k2) => s + monthly[k2].ahorro,  0) / keys3.length;
+                    monthly[k] = { ingreso: avgIng, gasto: avgGas, ahorro: avgAho, proyeccion: true };
+                    proyKeys.push(k);
+                }
+            }
+        }
+
+        // Proyección del mes actual (ritmo del mes hasta hoy)
+        if (monthly[nowKey]) {
+            const daysInMonth  = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+            const daysElapsed  = Math.max(now.getDate(), 1);
+            const factor       = daysInMonth / daysElapsed;
+            monthly[nowKey].projIngreso = monthly[nowKey].ingreso * factor;
+            monthly[nowKey].projGasto   = monthly[nowKey].gasto   * factor;
+            monthly[nowKey].projAhorro  = monthly[nowKey].ahorro  * factor;
+        }
 
         const keys = Object.keys(monthly).sort();
         if (keys.length === 0) return;
 
-        const ctx = canvasEl.getContext('2d');
-        charts.trend = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: keys,
-                datasets: [
-                    {
-                        label: 'Ingresos',
-                        data: keys.map(k => monthly[k].ingreso),
-                        borderColor: chartColors.success,
-                        backgroundColor: 'rgba(39,174,96,0.1)',
-                        borderWidth: 2, tension: 0.4
-                    },
-                    {
-                        label: 'Gastos Reales',
-                        data: keys.map(k => monthly[k].gasto),
-                        borderColor: chartColors.danger,
-                        backgroundColor: 'rgba(231,76,60,0.1)',
-                        borderWidth: 2, tension: 0.4
-                    },
-                    {
-                        label: 'Ahorro',
-                        data: keys.map(k => monthly[k].ahorro),
-                        borderColor: chartColors.saving,
-                        backgroundColor: 'rgba(155,89,182,0.1)',
-                        borderWidth: 2, tension: 0.4
-                    }
-                ]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { position: 'top' }, datalabels: { display: false } },
-                scales: { y: { beginAtZero: true, ticks: { callback: v => formatNum(v) } } }
-            }
+        // Índice donde empieza la proyección
+        const projStartIdx = keys.indexOf(proyKeys[0]);
+
+        const mesesLabels = keys.map(k => {
+            const [y, m] = k.split('-');
+            const monthAbbr = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+            return monthAbbr[parseInt(m)-1] + ' ' + y.slice(2);
         });
+
+        const ctx = canvasEl.getContext('2d');
+        const nowIdx = keys.indexOf(nowKey);
+
+        if (trendChartType === 'bar') {
+            // ── BAR MODE ──
+            charts.trend = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: mesesLabels,
+                    datasets: [
+                        {
+                            label: 'Ingresos',
+                            data: keys.map(k => monthly[k].ingreso),
+                            backgroundColor: keys.map(k => monthly[k].proyeccion ? 'rgba(39,174,96,0.35)' : 'rgba(39,174,96,0.85)'),
+                            borderRadius: 5
+                        },
+                        {
+                            label: 'Gastos',
+                            data: keys.map(k => monthly[k].gasto),
+                            backgroundColor: keys.map(k => monthly[k].proyeccion ? 'rgba(231,76,60,0.35)' : 'rgba(231,76,60,0.85)'),
+                            borderRadius: 5
+                        },
+                        {
+                            label: 'Ahorro',
+                            data: keys.map(k => monthly[k].ahorro),
+                            backgroundColor: keys.map(k => monthly[k].proyeccion ? 'rgba(155,89,182,0.35)' : 'rgba(155,89,182,0.85)'),
+                            borderRadius: 5
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, datalabels: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { callback: v => formatNum(v) } } }
+                }
+            });
+        } else {
+            // ── LINE MODE: línea sólida real + punteada proyección ──
+            const makeDataset = (label, getReal, getProj, color, alpha) => {
+                const realData   = keys.map((k, i) => i <= nowIdx ? getReal(monthly[k]) : null);
+                const projData   = keys.map((k, i) => {
+                    if (i === nowIdx)      return getReal(monthly[k]);     // punto de unión
+                    if (i > nowIdx)        return getProj ? getProj(monthly[k]) : getReal(monthly[k]);
+                    return null;
+                });
+                return [
+                    {
+                        label,
+                        data: realData,
+                        borderColor: color,
+                        backgroundColor: `rgba(${alpha},0.08)`,
+                        borderWidth: 2.5,
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        spanGaps: false
+                    },
+                    {
+                        label: label + ' ✨',
+                        data: projData,
+                        borderColor: color,
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderDash: [6, 4],
+                        tension: 0.3,
+                        fill: false,
+                        pointRadius: keys.map((_, i) => i > nowIdx ? 4 : 0),
+                        pointStyle: 'circle',
+                        pointBorderColor: color,
+                        pointBackgroundColor: 'white',
+                        pointBorderWidth: 1.5,
+                        spanGaps: false
+                    }
+                ];
+            };
+
+            const datasets = [
+                ...makeDataset('Ingresos',     m => m.ingreso, m => m.projIngreso || m.ingreso, chartColors.success, '39,174,96'),
+                ...makeDataset('Gastos',        m => m.gasto,   m => m.projGasto   || m.gasto,   chartColors.danger,  '231,76,60'),
+                ...makeDataset('Ahorro',        m => m.ahorro,  m => m.projAhorro  || m.ahorro,  chartColors.saving,  '155,89,182'),
+            ];
+
+            charts.trend = new Chart(ctx, {
+                type: 'line',
+                data: { labels: mesesLabels, datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: { display: false },
+                        annotation: {},
+                        tooltip: {
+                            callbacks: {
+                                label: c => `${c.dataset.label}: $${formatNum(c.parsed.y)}`
+                            },
+                            filter: item => item.parsed.y !== null
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { callback: v => formatNum(v) } },
+                        x: {
+                            ticks: {
+                                color: ctx2 => {
+                                    const k = keys[ctx2.index];
+                                    return monthly[k]?.proyeccion ? '#667eea' : undefined;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ── Cards resumen mensual ──────────────────────────────────
+        const scrollEl = document.getElementById('mesResumenScroll');
+        if (scrollEl) {
+            scrollEl.innerHTML = keys.map(k => {
+                const d = monthly[k];
+                const balance = d.ingreso - d.gasto - d.ahorro;
+                const isProj  = !!d.proyeccion || k > nowKey;
+                const [y, m] = k.split('-');
+                const monthAbbr = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+                const label = monthAbbr[parseInt(m)-1] + ' ' + y.slice(2);
+                const bColor = balance >= 0 ? 'var(--success)' : 'var(--danger)';
+                return `
+                    <div style="flex:0 0 120px; padding:10px 12px; background:${isProj ? 'rgba(102,126,234,0.08)' : 'var(--bg-surface)'}; border:1px solid ${isProj ? 'rgba(102,126,234,0.3)' : 'transparent'}; border-radius:12px; font-size:11px; transition:background 0.3s;">
+                        <div style="font-weight:700; color:${isProj ? 'var(--primary)' : 'var(--text-main)'}; margin-bottom:4px;">${label}${isProj ? ' ✨' : ''}</div>
+                        <div style="color:var(--success); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">+${formatNum(d.ingreso)}</div>
+                        <div style="color:var(--danger); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">-${formatNum(d.gasto)}</div>
+                        <div style="font-weight:700; color:${bColor}; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${balance >= 0 ? '+' : ''}${formatNum(balance)}</div>
+                    </div>`;
+            }).join('');
+        }
+
+        // ── Tabla histórica por categoría ──────────────────────────
+        const tablaEl = document.getElementById('tablaHistorica');
+        if (!tablaEl) return;
+
+        // Últimos 5 meses reales
+        const realKeys = keys.filter(k => !monthly[k].proyeccion && k <= nowKey).slice(-5);
+        if (realKeys.length < 2) { tablaEl.innerHTML = ''; return; }
+
+        // Categorías de gastos reales
+        const catByMonth = {};
+        transactions.forEach(t => {
+            const d = parseDate(t.fecha);
+            const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+            if (!realKeys.includes(key)) return;
+            if (t.tipo !== 'gasto' || isAhorroTx(t)) return;
+            const cat = t.categoria || 'Sin categoría';
+            if (!catByMonth[cat]) catByMonth[cat] = {};
+            catByMonth[cat][key] = (catByMonth[cat][key] || 0) + (Number(t.monto)||0);
+        });
+
+        const cats = Object.entries(catByMonth)
+            .sort((a, b) => {
+                const sa = Object.values(a[1]).reduce((x,y)=>x+y,0);
+                const sb = Object.values(b[1]).reduce((x,y)=>x+y,0);
+                return sb - sa;
+            })
+            .slice(0, 8);
+
+        if (cats.length === 0) { tablaEl.innerHTML = ''; return; }
+
+        const headerAbbr = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+        const colLabels  = realKeys.map(k => { const [, m] = k.split('-'); return headerAbbr[parseInt(m)-1]; });
+
+        const thead = `<thead><tr>
+            <th style="text-align:left; padding:8px 10px; background:var(--bg-surface); font-size:11px; color:var(--text-muted); border-bottom:2px solid var(--border);">CATEGORÍA</th>
+            ${colLabels.map((l, i) => `<th style="text-align:right; padding:8px 10px; background:var(--bg-surface); font-size:11px; color:var(--text-muted); border-bottom:2px solid var(--border);">${l}</th>`).join('')}
+        </tr></thead>`;
+
+        const tbody = `<tbody>${cats.map(([cat, byMonth]) => {
+            const cells = realKeys.map((k, i) => {
+                const monto = byMonth[k] || 0;
+                let delta = '';
+                if (i > 0) {
+                    const prev = byMonth[realKeys[i-1]] || 0;
+                    if (prev > 0 && monto !== prev) {
+                        const pct = ((monto - prev) / prev * 100).toFixed(0);
+                        const up  = monto > prev;
+                        const color = up ? 'var(--danger)' : 'var(--success)';
+                        delta = `<div style="font-size:9px;font-weight:700;color:${color};margin-top:2px;">${up?'+':''}${pct}%</div>`;
+                    } else if (prev === 0 && monto > 0) {
+                        delta = `<div style="font-size:9px;font-weight:700;color:var(--primary);margin-top:2px;">NEW</div>`;
+                    }
+                }
+                return `<td style="text-align:right; padding:8px 10px; border-bottom:1px solid var(--border); font-size:13px; color:var(--text-main);">
+                    <div style="font-weight:700;">${monto > 0 ? formatNum(monto) : '—'}</div>${delta}
+                </td>`;
+            }).join('');
+            return `<tr><td style="padding:8px 10px; border-bottom:1px solid var(--border); font-size:13px; font-weight:600; color:var(--text-main);">${cat}</td>${cells}</tr>`;
+        }).join('')}</tbody>`;
+
+        tablaEl.innerHTML = `
+            <div style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:8px;">Evolución de Gastos por Categoría</div>
+            <table style="width:100%; border-collapse:collapse; font-size:13px;">${thead}${tbody}</table>`;
     };
 
     // Comparativas por categoria (gastos reales)

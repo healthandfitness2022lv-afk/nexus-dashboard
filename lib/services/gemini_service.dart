@@ -500,6 +500,24 @@ SITUACIÓN REAL DEL MES ACTUAL (día $diasTranscurridos de $diasEnMes):
       deudasStr = deudasPend.map(formatDeudaLinea).join('\n');
     }
 
+    // Bloque explícito de meses libres por pagos adelantados (refuerzo para la IA)
+    final mesObjetivoKey = () {
+      final m = esMesSiguiente
+          ? DateTime(ahora.year, ahora.month + 1)
+          : DateTime(ahora.year, ahora.month);
+      return '${m.year}-${m.month.toString().padLeft(2, '0')}';
+    }();
+    final advertenciasAdelanto = <String>[];
+    for (final d in deudasPend) {
+      final mesesLibres = (d['mesesLibresPorAdelanto'] as List?)?.cast<String>() ?? [];
+      if (mesesLibres.contains(mesObjetivoKey)) {
+        advertenciasAdelanto.add('⛔ "${d['descripcion']}": NO tiene cuota en $mesObjetivoKey — ya fue pagada anticipadamente. No menciones ni sumes esta cuota.');
+      }
+    }
+    final advertenciasStr = advertenciasAdelanto.isNotEmpty
+        ? '\nCUOTAS PAGADAS ANTICIPADAMENTE (NO COBRAR ESTE MES):\n${advertenciasAdelanto.join('\n')}\n'
+        : '';
+
     final ingresosEspStr = _formatIngresosEsperados(ingresosEsperados);
 
     final objetivoMes = esMesSiguiente ? 'el MES QUE VIENE' : 'lo que queda del MES ACTUAL';
@@ -515,7 +533,7 @@ DEFINICIONES IMPORTANTES (no confundir):
 - "Ahorro" (categoría): dinero apartado intencionalmente para metas específicas (viaje, fondo emergencia, etc.). ES un compromiso, NO dinero libre.
 - "Balance libre": ingresos menos TODOS los gastos (incluido ahorro). Esto es lo que realmente sobra.
 - Los presupuestos son MENSUALES. Compara solo gasto del mes vs límite.
-$contextoMesActual$ingresosEspStr${_formatSuscripciones(suscripciones)}
+$contextoMesActual$ingresosEspStr${_formatSuscripciones(suscripciones)}$advertenciasStr
 DEUDAS Y COMPROMISOS PENDIENTES:
 $deudasStr
 
@@ -533,9 +551,9 @@ $gastosPorMesStr
 
 Estructura de la respuesta:
 - $instruccionMes
-- Un consejo estratégico considerando SOLO las cuotas/compromisos que vencen en $objetivoMes (NO menciones cuotas ya pagadas ni de meses futuros). Menciona el impacto real en el dinero libre. Si hay suscripciones que se cobran, inclúyelas.
+- Un consejo estratégico considerando SOLO las cuotas/compromisos que vencen en $objetivoMes (NO menciones cuotas ya pagadas anticipadamente ni de meses futuros). Menciona el impacto real en el dinero libre. Si hay suscripciones que se cobran, inclúyelas.
 - Usa emojis de forma profesional.
-IMPORTANTE: Solo menciona deudas y cuotas que aparezcan con fecha en $objetivoMes. No inventes vencimientos ni repitas pagos ya realizados.
+IMPORTANTE: Solo menciona deudas y cuotas que aparezcan con fecha en $objetivoMes y NO estén marcadas como pagadas anticipadamente. No inventes vencimientos ni repitas pagos ya realizados.
 ''';
 
     return await _llamarGemini(prompt);

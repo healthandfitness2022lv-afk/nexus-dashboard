@@ -833,10 +833,9 @@
     const calcStats = (transactions) => {
         const { gastos, ingresos, ahorroTx, gastosRealesTx, ingresosTx } = calcTotalesNetos(transactions);
 
-        // balance = ingresos - gastos (igual que la app: balance = totalIngresos - totalGastos - totalAhorro,
-        // pero aquí gastos ya excluye ahorro, así que es equivalente)
+        // balance = ingresos - gastos - ahorro (igual que la app)
         const totalAhorro = ahorroTx.reduce((s, t) => s + (Number(t.monto)||0), 0);
-        const balance     = ingresos - gastos;
+        const balance     = ingresos - gastos - totalAhorro;
 
         return {
             ingresos: ingresosTx,
